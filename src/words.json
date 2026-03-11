@@ -1,0 +1,12 @@
+[
+  "apple", "banana", "cat", "dog", "elephant", "fish", "guitar", "house", "ice cream", "jellyfish",
+  "kite", "lion", "monkey", "nest", "orange", "penguin", "queen", "rabbit", "snake", "tree",
+  "umbrella", "volcano", "watermelon", "xylophone", "yacht", "zebra", "computer", "keyboard", "mouse", "monitor",
+  "sun", "moon", "star", "cloud", "rain", "snow", "mountain", "river", "ocean", "beach",
+  "car", "bus", "train", "airplane", "helicopter", "bicycle", "motorcycle", "boat", "ship", "submarine",
+  "pizza", "burger", "sandwich", "hot dog", "taco", "sushi", "noodle", "soup", "salad", "steak",
+  "doctor", "nurse", "teacher", "police", "firefighter", "pilot", "astronaut", "chef", "artist", "musician",
+  "football", "basketball", "baseball", "tennis", "soccer", "golf", "volleyball", "swimming", "running", "cycling",
+  "book", "pen", "pencil", "notebook", "eraser", "ruler", "scissors", "glue", "paper", "calculator",
+  "phone", "tablet", "laptop", "television", "camera", "headphones", "speaker", "microphone", "watch", "clock"
+]
