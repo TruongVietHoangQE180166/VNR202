@@ -251,7 +251,7 @@ export default function Room() {
   };
 
   const startGame = async () => {
-    if (!room || players.length < 1) return;
+    if (!room || players.length < 2) return;
     
     await supabase.from('rooms').update({
       status: 'playing',
@@ -326,6 +326,19 @@ export default function Room() {
       <main className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Players */}
         <aside className="w-64 bg-slate-800 border-r border-slate-700 flex flex-col">
+          <div className="p-4 border-b border-slate-700">
+            <h2 className="font-semibold flex items-center gap-2 text-indigo-400">
+              <Users className="w-4 h-4" />
+              Host
+            </h2>
+            <div className="mt-2 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
+                H
+              </div>
+              <span className="font-medium text-white">Host</span>
+            </div>
+          </div>
+
           <div className="p-4 border-b border-slate-700 flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2">
               <Users className="w-4 h-4" />
