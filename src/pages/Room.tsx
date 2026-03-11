@@ -102,10 +102,6 @@ export default function Room() {
     return () => {
       clearInterval(pollingInterval);
       supabase.removeChannel(realtimeChannel);
-      // If player leaves, remove them from db
-      if (!currentPlayer.isHost) {
-        supabase.from('players').delete().eq('id', currentPlayer.id).then();
-      }
     };
   }, [id, currentPlayer, navigate]);
 
@@ -279,9 +275,25 @@ export default function Room() {
     startTurn(players[0].id, 1, []);
   };
 
-  const handleLeave = () => {
+  const handleLeave = async () => {
+    if (currentPlayer && !currentPlayer.isHost) {
+      await supabase.from('players').delete().eq('id', currentPlayer.id);
+    }
     navigate('/');
   };
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (currentPlayer && !currentPlayer.isHost) {
+        // Use sendBeacon or synchronous fetch if possible, but standard Supabase delete might not complete
+        // We'll just try to delete
+        supabase.from('players').delete().eq('id', currentPlayer.id).then();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [currentPlayer]);
 
   if (loading || !room) {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
