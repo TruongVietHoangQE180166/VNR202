@@ -32,7 +32,18 @@ export default function Home() {
 
       if (error) throw error;
 
-      setCurrentPlayer({ id: hostId, name: 'Host', isHost: true });
+      // Host is also a player
+      const { error: playerError } = await supabase
+        .from('players')
+        .insert({
+          id: hostId,
+          room_id: room.id,
+          name: playerName || 'Host',
+        });
+
+      if (playerError) throw playerError;
+
+      setCurrentPlayer({ id: hostId, name: playerName || 'Host', isHost: true });
       navigate(`/room/${room.id}`);
     } catch (error: any) {
       console.error('Error creating room:', error);
@@ -145,6 +156,18 @@ export default function Home() {
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Your Name</label>
+                  <input
+                    type="text"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Enter your name (Host)"
+                    required
+                    maxLength={20}
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Max Players</label>
                   <input

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, Message } from '../store/gameStore';
 import { supabase } from '../lib/supabase';
 import { Send } from 'lucide-react';
 
@@ -65,7 +65,19 @@ export default function Chat() {
         }
 
         // Send system message
+        const sysMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
+        useGameStore.getState().addMessage({
+          id: sysMsgId,
+          room_id: room.id,
+          player_id: null,
+          player_name: null,
+          content: `${currentPlayer.name} guessed the word!`,
+          is_system: true,
+          created_at: new Date().toISOString(),
+        });
+
         await supabase.from('messages').insert({
+          id: sysMsgId,
           room_id: room.id,
           content: `${currentPlayer.name} guessed the word!`,
           is_system: true,
@@ -76,7 +88,21 @@ export default function Chat() {
     }
 
     // Normal message
+    const tempMessage: Message = {
+      id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0'),
+      room_id: room.id,
+      player_id: currentPlayer.id,
+      player_name: currentPlayer.name,
+      content: messageContent,
+      is_system: false,
+      created_at: new Date().toISOString(),
+    };
+    
+    // Optimistic update
+    useGameStore.getState().addMessage(tempMessage);
+
     await supabase.from('messages').insert({
+      id: tempMessage.id,
       room_id: room.id,
       player_id: currentPlayer.id,
       player_name: currentPlayer.name,

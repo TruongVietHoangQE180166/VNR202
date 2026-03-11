@@ -51,11 +51,11 @@ export default function Room() {
           .from('messages')
           .select('*')
           .eq('room_id', id)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: false })
           .limit(50);
         
         if (messagesError) throw messagesError;
-        setMessages(messagesData);
+        setMessages(messagesData.reverse());
 
         setLoading(false);
       } catch (error) {
@@ -72,20 +72,35 @@ export default function Room() {
     setChannel(realtimeChannel);
 
     realtimeChannel
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${id}` }, (payload) => {
-        setRoom(payload.new as RoomType);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, (payload) => {
+        if (payload.new && (payload.new as RoomType).id === id) {
+          setRoom(payload.new as RoomType);
+        }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${id}` }, async () => {
-        // Re-fetch players to keep it simple and ordered
-        const { data } = await supabase.from('players').select('*').eq('room_id', id).order('joined_at', { ascending: true });
-        if (data) setPlayers(data);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async (payload) => {
+        if ((payload.new && (payload.new as Player).room_id === id) || (payload.old && (payload.old as Player).room_id === id)) {
+          const { data } = await supabase.from('players').select('*').eq('room_id', id).order('joined_at', { ascending: true });
+          if (data) setPlayers(data);
+        }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${id}` }, (payload) => {
-        addMessage(payload.new as Message);
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        if (payload.new && (payload.new as Message).room_id === id) {
+          addMessage(payload.new as Message);
+        }
       })
       .subscribe();
 
+    // Polling fallback just in case realtime fails
+    const pollingInterval = setInterval(async () => {
+      const { data } = await supabase.from('players').select('*').eq('room_id', id).order('joined_at', { ascending: true });
+      if (data) setPlayers(data);
+      
+      const { data: msgs } = await supabase.from('messages').select('*').eq('room_id', id).order('created_at', { ascending: false }).limit(50);
+      if (msgs) setMessages(msgs.reverse());
+    }, 3000);
+
     return () => {
+      clearInterval(pollingInterval);
       supabase.removeChannel(realtimeChannel);
       // If player leaves, remove them from db
       if (!currentPlayer.isHost) {
@@ -132,7 +147,18 @@ export default function Room() {
     if (!room) return;
 
     // Send system message with answer
+    const sysMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
+    addMessage({
+      id: sysMsgId,
+      room_id: room.id,
+      player_id: null,
+      player_name: null,
+      content: `The word was: ${room.current_word}`,
+      is_system: true,
+      created_at: new Date().toISOString(),
+    });
     await supabase.from('messages').insert({
+      id: sysMsgId,
       room_id: room.id,
       content: `The word was: ${room.current_word}`,
       is_system: true,
@@ -157,7 +183,18 @@ export default function Room() {
         word_start_time: null,
       }).eq('id', room.id);
       
+      const gameOverId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
+      addMessage({
+        id: gameOverId,
+        room_id: room.id,
+        player_id: null,
+        player_name: null,
+        content: `Game Over!`,
+        is_system: true,
+        created_at: new Date().toISOString(),
+      });
       await supabase.from('messages').insert({
+        id: gameOverId,
         room_id: room.id,
         content: `Game Over!`,
         is_system: true,
@@ -195,7 +232,18 @@ export default function Room() {
     }).eq('id', room.id);
 
     const drawer = players.find(p => p.id === drawerId);
+    const drawerMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
+    addMessage({
+      id: drawerMsgId,
+      room_id: room.id,
+      player_id: null,
+      player_name: null,
+      content: `${drawer?.name || 'Someone'} is drawing now!`,
+      is_system: true,
+      created_at: new Date().toISOString(),
+    });
     await supabase.from('messages').insert({
+      id: drawerMsgId,
       room_id: room.id,
       content: `${drawer?.name || 'Someone'} is drawing now!`,
       is_system: true,
@@ -211,7 +259,18 @@ export default function Room() {
       used_words: [],
     }).eq('id', room.id);
 
+    const startMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
+    addMessage({
+      id: startMsgId,
+      room_id: room.id,
+      player_id: null,
+      player_name: null,
+      content: `Game started! Round 1 of ${room.settings.rounds}`,
+      is_system: true,
+      created_at: new Date().toISOString(),
+    });
     await supabase.from('messages').insert({
+      id: startMsgId,
       room_id: room.id,
       content: `Game started! Round 1 of ${room.settings.rounds}`,
       is_system: true,
@@ -279,7 +338,7 @@ export default function Room() {
             <div className="p-4 mt-auto border-t border-slate-700">
               <button
                 onClick={startGame}
-                disabled={players.length < 1}
+                disabled={players.length < 2}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <Play className="w-5 h-5" />
