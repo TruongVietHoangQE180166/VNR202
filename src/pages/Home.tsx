@@ -32,6 +32,17 @@ export default function Home() {
 
       if (error) throw error;
 
+      // Add host to players table
+      const { error: playerError } = await supabase
+        .from('players')
+        .insert({
+          id: hostId,
+          room_id: room.id,
+          name: playerName || 'Host',
+        });
+
+      if (playerError) throw playerError;
+
       setCurrentPlayer({ id: hostId, name: playerName || 'Host', isHost: true });
       navigate(`/room/${room.id}`);
     } catch (error: any) {
@@ -83,27 +94,27 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <Palette className="w-16 h-16 text-indigo-500" />
+            <Palette className="w-16 h-16 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-white mb-2">Draw & Guess</h1>
-          <p className="text-slate-400">Multiplayer drawing and guessing game</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-2">Draw & Guess</h1>
+          <p className="text-muted-foreground">Multiplayer drawing and guessing game</p>
         </div>
 
-        <div className="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+        <div className="bg-card text-card-foreground p-6 rounded-2xl shadow-xl border border-border">
           <div className="flex space-x-2 mb-6">
             <button
               onClick={() => setIsCreating(false)}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${!isCreating ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${!isCreating ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
             >
               Join Game
             </button>
             <button
               onClick={() => setIsCreating(true)}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${isCreating ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${isCreating ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
             >
               Host Game
             </button>
@@ -112,31 +123,31 @@ export default function Home() {
           {!isCreating ? (
             <form onSubmit={handleJoinRoom} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Your Name</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Your Name</label>
                 <input
                   type="text"
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-background border border-input rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Enter your name"
                   required
                   maxLength={20}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Room ID</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Room ID</label>
                 <input
                   type="text"
                   value={joinId}
                   onChange={(e) => setJoinId(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-background border border-input rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Enter room ID"
                   required
                 />
               </div>
               <button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <Play className="w-4 h-4" />
                 Join Room
@@ -146,46 +157,46 @@ export default function Home() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Max Players</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Max Players</label>
                   <input
                     type="number"
                     value={settings.maxPlayers}
                     onChange={(e) => setSettings({ ...settings, maxPlayers: parseInt(e.target.value) })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-background border border-input rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     min={2}
                     max={20}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Rounds</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Rounds</label>
                   <input
                     type="number"
                     value={settings.rounds}
                     onChange={(e) => setSettings({ ...settings, rounds: parseInt(e.target.value) })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-background border border-input rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     min={1}
                     max={10}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Draw Time (s)</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Draw Time (s)</label>
                   <input
                     type="number"
                     value={settings.drawTime}
                     onChange={(e) => setSettings({ ...settings, drawTime: parseInt(e.target.value) })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-background border border-input rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     min={30}
                     max={180}
                     step={10}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Hints</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Hints</label>
                   <input
                     type="number"
                     value={settings.hints}
                     onChange={(e) => setSettings({ ...settings, hints: parseInt(e.target.value) })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-background border border-input rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     min={0}
                     max={5}
                   />
@@ -193,7 +204,7 @@ export default function Home() {
               </div>
               <button
                 onClick={handleCreateRoom}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <Settings className="w-4 h-4" />
                 Create Room (Host)

@@ -28,9 +28,9 @@ export default function Timer() {
   if (!room || room.status !== 'playing') return null;
 
   return (
-    <div className="flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-lg border border-slate-700">
-      <Clock className={`w-5 h-5 ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-indigo-400'}`} />
-      <span className={`font-mono text-xl font-bold ${timeLeft <= 10 ? 'text-red-500' : 'text-white'}`}>
+    <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-lg border border-border">
+      <Clock className={`w-5 h-5 ${timeLeft <= 10 ? 'text-destructive animate-pulse' : 'text-primary'}`} />
+      <span className={`font-mono text-xl font-bold ${timeLeft <= 10 ? 'text-destructive' : 'text-foreground'}`}>
         {timeLeft}s
       </span>
     </div>

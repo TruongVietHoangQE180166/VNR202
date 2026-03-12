@@ -15,21 +15,21 @@ export default function PlayerList() {
             key={player.id}
             className={`flex items-center justify-between p-3 rounded-lg border ${
               player.has_guessed
-                ? 'bg-emerald-900/30 border-emerald-700/50'
+                ? 'bg-accent/20 border-accent/50'
                 : isDrawer
-                ? 'bg-indigo-900/30 border-indigo-700/50'
-                : 'bg-slate-900/50 border-slate-700/50'
+                ? 'bg-primary/20 border-primary/50'
+                : 'bg-background/50 border-border/50'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="font-bold text-slate-400 w-4">#{index + 1}</div>
+              <div className="font-bold text-muted-foreground w-4">#{index + 1}</div>
               <div className="flex flex-col">
-                <span className="font-medium text-white flex items-center gap-2">
+                <span className="font-medium text-foreground flex items-center gap-2">
                   {player.name}
-                  {isDrawer && <Pencil className="w-3 h-3 text-indigo-400" />}
-                  {player.has_guessed && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                  {isDrawer && <Pencil className="w-3 h-3 text-primary" />}
+                  {player.has_guessed && <CheckCircle2 className="w-4 h-4 text-accent" />}
                 </span>
-                <span className="text-xs text-slate-400">{player.score} pts</span>
+                <span className="text-xs text-muted-foreground">{player.score} pts</span>
               </div>
             </div>
           </div>

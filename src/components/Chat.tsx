@@ -112,19 +112,19 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-800">
-      <div className="p-4 border-b border-slate-700">
-        <h2 className="font-semibold text-white">Chat</h2>
+    <div className="flex flex-col h-full bg-card">
+      <div className="p-4 border-b border-border">
+        <h2 className="font-semibold text-card-foreground">Chat</h2>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`text-sm ${msg.is_system ? 'text-emerald-400 font-medium italic' : 'text-slate-300'}`}
+            className={`text-sm ${msg.is_system ? 'text-accent font-medium italic' : 'text-muted-foreground'}`}
           >
             {!msg.is_system && (
-              <span className="font-bold text-indigo-400 mr-2">{msg.player_name}:</span>
+              <span className="font-bold text-primary mr-2">{msg.player_name}:</span>
             )}
             <span className="break-words">{msg.content}</span>
           </div>
@@ -132,20 +132,20 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="p-4 border-t border-slate-700 bg-slate-900 flex gap-2">
+      <form onSubmit={handleSend} className="p-4 border-t border-border bg-background flex gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={currentPlayer?.isHost ? "Hosts can't chat" : "Type your guess..."}
           disabled={currentPlayer?.isHost}
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+          className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           maxLength={100}
         />
         <button
           type="submit"
           disabled={!input.trim() || currentPlayer?.isHost}
-          className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:text-slate-500 text-white p-2 rounded-lg transition-colors flex items-center justify-center"
+          className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground p-2 rounded-lg transition-colors flex items-center justify-center"
         >
           <Send className="w-4 h-4" />
         </button>

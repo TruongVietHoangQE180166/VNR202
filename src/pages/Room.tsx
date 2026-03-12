@@ -296,21 +296,21 @@ export default function Room() {
   }, [currentPlayer]);
 
   if (loading || !room) {
-    return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
+    return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading...</div>;
   }
 
   const isDrawer = currentPlayer?.id === room.current_drawer_id;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700 p-4 flex items-center justify-between">
+      <header className="bg-card border-b border-border p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Palette className="w-6 h-6 text-indigo-500" />
+          <h1 className="text-xl font-bold text-card-foreground flex items-center gap-2">
+            <Palette className="w-6 h-6 text-primary" />
             Draw & Guess
           </h1>
-          <div className="bg-slate-900 px-3 py-1 rounded-md text-sm font-mono text-slate-400 border border-slate-700">
+          <div className="bg-background px-3 py-1 rounded-md text-sm font-mono text-muted-foreground border border-border">
             Room: {room.id}
           </div>
         </div>
@@ -318,7 +318,7 @@ export default function Room() {
         {room.status === 'playing' && (
           <div className="flex items-center gap-6">
             <div className="text-center">
-              <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Round</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Round</div>
               <div className="font-mono text-lg">{room.current_round} / {room.settings.rounds}</div>
             </div>
             <Timer />
@@ -327,7 +327,7 @@ export default function Room() {
 
         <button
           onClick={handleLeave}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Leave
@@ -337,21 +337,21 @@ export default function Room() {
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Players */}
-        <aside className="w-64 bg-slate-800 border-r border-slate-700 flex flex-col">
-          <div className="p-4 border-b border-slate-700">
-            <h2 className="font-semibold flex items-center gap-2 text-indigo-400">
+        <aside className="w-64 bg-card border-r border-border flex flex-col">
+          <div className="p-4 border-b border-border">
+            <h2 className="font-semibold flex items-center gap-2 text-primary">
               <Users className="w-4 h-4" />
               Host
             </h2>
             <div className="mt-2 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
                 H
               </div>
-              <span className="font-medium text-white">Host</span>
+              <span className="font-medium text-card-foreground">Host</span>
             </div>
           </div>
 
-          <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          <div className="p-4 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2">
               <Users className="w-4 h-4" />
               Players ({players.length}/{room.settings.maxPlayers})
@@ -360,11 +360,11 @@ export default function Room() {
           <PlayerList />
           
           {currentPlayer?.isHost && room.status === 'waiting' && (
-            <div className="p-4 mt-auto border-t border-slate-700">
+            <div className="p-4 mt-auto border-t border-border">
               <button
                 onClick={startGame}
                 disabled={players.length < 2}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-accent hover:bg-accent/90 disabled:bg-muted disabled:text-muted-foreground text-accent-foreground font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <Play className="w-5 h-5" />
                 Start Game
@@ -374,32 +374,32 @@ export default function Room() {
         </aside>
 
         {/* Center - Canvas & Word */}
-        <section className="flex-1 flex flex-col bg-slate-900 relative">
+        <section className="flex-1 flex flex-col bg-background relative">
           {room.status === 'waiting' ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
               <Users className="w-16 h-16 mb-4 opacity-50" />
-              <h2 className="text-2xl font-bold text-white mb-2">Waiting for players...</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Waiting for players...</h2>
               <p>Share the Room ID with your friends to join.</p>
               {currentPlayer?.isHost && (
-                <p className="mt-4 text-sm text-indigo-400">You are the host. Click Start Game when ready.</p>
+                <p className="mt-4 text-sm text-primary">You are the host. Click Start Game when ready.</p>
               )}
             </div>
           ) : room.status === 'finished' ? (
             <div className="flex-1 flex flex-col items-center justify-center">
               <Trophy className="w-24 h-24 text-yellow-500 mb-6" />
-              <h2 className="text-4xl font-bold text-white mb-8">Game Over!</h2>
-              <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md border border-slate-700">
+              <h2 className="text-4xl font-bold text-foreground mb-8">Game Over!</h2>
+              <div className="bg-card rounded-xl p-6 w-full max-w-md border border-border">
                 <h3 className="text-xl font-bold mb-4 text-center">Final Scores</h3>
                 <div className="space-y-3">
                   {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
-                    <div key={p.id} className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-700">
+                    <div key={p.id} className="flex items-center justify-between bg-background p-3 rounded-lg border border-border">
                       <div className="flex items-center gap-3">
-                        <span className={`font-bold ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-amber-600' : 'text-slate-500'}`}>
+                        <span className={`font-bold ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-muted-foreground' : i === 2 ? 'text-amber-600' : 'text-muted-foreground'}`}>
                           #{i + 1}
                         </span>
                         <span className="font-medium">{p.name}</span>
                       </div>
-                      <span className="font-mono font-bold text-indigo-400">{p.score} pts</span>
+                      <span className="font-mono font-bold text-primary">{p.score} pts</span>
                     </div>
                   ))}
                 </div>
@@ -407,18 +407,18 @@ export default function Room() {
             </div>
           ) : (
             <>
-              <div className="h-16 bg-slate-800 border-b border-slate-700 flex items-center justify-center">
+              <div className="h-16 bg-card border-b border-border flex items-center justify-center">
                 <WordDisplay />
               </div>
               <div className="flex-1 relative p-4 flex items-center justify-center">
-                <div className="w-full h-full max-w-4xl max-h-[600px] bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-slate-700">
+                <div className="w-full h-full max-w-4xl max-h-[600px] bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-border">
                   <Canvas roomId={room.id} isDrawer={isDrawer} />
                 </div>
                 
                 {/* Overlay if not drawer and waiting for turn */}
                 {!isDrawer && !room.current_drawer_id && (
-                  <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-10">
-                    <div className="text-2xl font-bold text-white">Waiting for next round...</div>
+                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10">
+                    <div className="text-2xl font-bold text-foreground">Waiting for next round...</div>
                   </div>
                 )}
               </div>
@@ -427,7 +427,7 @@ export default function Room() {
         </section>
 
         {/* Right Sidebar - Chat */}
-        <aside className="w-80 bg-slate-800 border-l border-slate-700 flex flex-col">
+        <aside className="w-80 bg-card border-l border-border flex flex-col">
           <Chat />
         </aside>
       </main>

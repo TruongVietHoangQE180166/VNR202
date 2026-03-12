@@ -60,7 +60,7 @@ export default function WordDisplay() {
   if (!room || !room.current_word) return null;
 
   return (
-    <div className="text-3xl font-mono tracking-[0.5em] font-bold text-white">
+    <div className="text-3xl font-mono tracking-[0.5em] font-bold text-foreground">
       {displayWord}
     </div>
   );

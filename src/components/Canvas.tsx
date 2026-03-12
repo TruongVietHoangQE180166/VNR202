@@ -162,13 +162,13 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
   return (
     <div className="relative w-full h-full flex flex-col">
       {isDrawer && (
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-slate-200 z-10">
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between bg-card/90 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-border z-10">
           <div className="flex items-center gap-2">
             {['#000000', '#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#FFFFFF'].map((c) => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-slate-800 scale-110' : 'border-transparent shadow-sm'}`}
+                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-foreground scale-110' : 'border-transparent shadow-sm'}`}
                 style={{ backgroundColor: c }}
                 title={c === '#FFFFFF' ? 'Eraser' : 'Color'}
               />
@@ -181,11 +181,11 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
               max="20"
               value={lineWidth}
               onChange={(e) => setLineWidth(parseInt(e.target.value))}
-              className="w-24 accent-indigo-600"
+              className="w-24 accent-primary"
             />
             <button
               onClick={clearCanvas}
-              className="px-3 py-1 bg-red-100 text-red-600 hover:bg-red-200 rounded-md text-sm font-medium transition-colors"
+              className="px-3 py-1 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md text-sm font-medium transition-colors"
             >
               Clear
             </button>
