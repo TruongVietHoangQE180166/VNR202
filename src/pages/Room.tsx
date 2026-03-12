@@ -7,7 +7,7 @@ import Chat from '../components/Chat';
 import PlayerList from '../components/PlayerList';
 import WordDisplay from '../components/WordDisplay';
 import Timer from '../components/Timer';
-import { Users, LogOut, Play, Trophy, Palette, Loader2 } from 'lucide-react';
+import { Users, LogOut, Play, Trophy, Palette, Loader2, Pencil } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
 import { soundManager } from '../lib/sounds';
@@ -23,12 +23,15 @@ export default function Room() {
   const [showRoundOver, setShowRoundOver] = useState(false);
   const [showYourTurn, setShowYourTurn] = useState(false);
   const [showCorrectGuess, setShowCorrectGuess] = useState(false);
+  const [showTurnAnnouncement, setShowTurnAnnouncement] = useState(false);
+  const [currentDrawerName, setCurrentDrawerName] = useState('');
   const [prevDrawerId, setPrevDrawerId] = useState<string | null>(null);
-  const [prevHasGuessed, setPrevHasGuessed] = useState(false);
   const [prevScores, setPrevScores] = useState<Record<string, number>>({});
   const [scoreGains, setScoreGains] = useState<Record<string, number>>({});
 
   const [prevStatus, setPrevStatus] = useState<string | null>(null);
+  const [prevPlayerCount, setPrevPlayerCount] = useState(0);
+  const lastHandledGuessRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!room || !currentPlayer) return;
@@ -53,12 +56,21 @@ export default function Room() {
       setScoreGains(gains);
     }
 
+    // Play join/leave sounds
+    if (players.length > prevPlayerCount && prevPlayerCount > 0) {
+      soundManager.play('join');
+    } else if (players.length < prevPlayerCount) {
+      soundManager.play('leave');
+    }
+    setPrevPlayerCount(players.length);
+
     // Update prevScores when round starts or ends
     if (room.status === 'playing' && prevStatus !== 'playing') {
       const scores: Record<string, number> = {};
       players.forEach(p => scores[p.id] = p.score);
       setPrevScores(scores);
       setScoreGains({});
+      lastHandledGuessRef.current = false;
     }
 
     setPrevStatus(room.status);
@@ -66,27 +78,36 @@ export default function Room() {
     // Check if it's now your turn to draw
     if (room.current_drawer_id === currentPlayer.id && prevDrawerId !== currentPlayer.id) {
       setShowYourTurn(true);
+      soundManager.play('yourTurn');
       setTimeout(() => setShowYourTurn(false), 3000);
     }
 
     // Play turn sound for everyone when drawer changes
     if (room.current_drawer_id && room.current_drawer_id !== prevDrawerId) {
       soundManager.play('turn');
+      const drawer = players.find(p => p.id === room.current_drawer_id);
+      if (drawer) {
+        setCurrentDrawerName(drawer.name);
+        if (drawer.id !== currentPlayer.id) {
+          setShowTurnAnnouncement(true);
+          setTimeout(() => setShowTurnAnnouncement(false), 3000);
+        }
+      }
     }
 
     setPrevDrawerId(room.current_drawer_id);
 
     // Check if you just guessed correctly
     const me = players.find(p => p.id === currentPlayer.id);
-    if (me && me.has_guessed && !prevHasGuessed) {
+    if (me && me.has_guessed && !lastHandledGuessRef.current) {
       setShowCorrectGuess(true);
       soundManager.play('correct');
       setTimeout(() => setShowCorrectGuess(false), 3000);
-      setPrevHasGuessed(true); // Update immediately to prevent double trigger
+      lastHandledGuessRef.current = true;
     } else if (me && !me.has_guessed) {
-      setPrevHasGuessed(false);
+      lastHandledGuessRef.current = false;
     }
-  }, [room?.status, room?.current_drawer_id, players, currentPlayer, prevDrawerId, prevHasGuessed, prevStatus, prevScores]);
+  }, [room?.status, room?.current_drawer_id, players.length, currentPlayer, prevDrawerId, prevStatus, prevScores]);
 
   useEffect(() => {
     if (!id || !currentPlayer) {
@@ -567,6 +588,7 @@ export default function Room() {
           {currentPlayer?.isHost && (
             <button
               onClick={async () => {
+                soundManager.play('click');
                 await supabase.from('rooms').update({ status: 'waiting', current_round: 1, used_words: [] }).eq('id', room.id);
               }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-8 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
@@ -583,9 +605,9 @@ export default function Room() {
   const isDrawer = currentPlayer?.id === room.current_drawer_id;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-card border-b border-border p-4 flex items-center justify-between">
+      <header className="h-16 bg-card border-b border-border px-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-card-foreground flex items-center gap-2">
             <Palette className="w-6 h-6 text-primary" />
@@ -607,7 +629,10 @@ export default function Room() {
         )}
 
         <button
-          onClick={handleLeave}
+          onClick={() => {
+            soundManager.play('click');
+            handleLeave();
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
         >
           <LogOut className="w-4 h-4" />
@@ -616,9 +641,9 @@ export default function Room() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden h-[calc(100vh-64px)]">
+      <main className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Players */}
-        <aside className="w-64 bg-card border-r border-border flex flex-col h-full overflow-hidden">
+        <aside className="w-64 bg-card border-r border-border flex flex-col h-full">
           <div className="p-4 border-b border-border">
             <h2 className="font-semibold flex items-center gap-2 text-primary">
               <Users className="w-4 h-4" />
@@ -643,7 +668,10 @@ export default function Room() {
           {currentPlayer?.isHost && room.status === 'waiting' && (
             <div className="p-4 mt-auto border-t border-border">
               <button
-                onClick={startGame}
+                onClick={() => {
+                  soundManager.play('click');
+                  startGame();
+                }}
                 disabled={players.length < 1}
                 className="w-full bg-accent hover:bg-accent/90 disabled:bg-muted disabled:text-muted-foreground text-accent-foreground font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
@@ -785,6 +813,28 @@ export default function Room() {
                       </motion.div>
                     </motion.div>
                   )}
+
+                  {/* Turn Announcement Overlay (for others) */}
+                  {showTurnAnnouncement && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-background/40 backdrop-blur-sm flex items-center justify-center z-30 rounded-xl border-4 border-transparent pointer-events-none"
+                    >
+                      <motion.div 
+                        initial={{ scale: 0.5, opacity: 0, y: 50 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.8, opacity: 0, y: -50 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="bg-secondary text-secondary-foreground p-8 rounded-3xl shadow-2xl text-center max-w-md w-full mx-4"
+                      >
+                        <Pencil className="w-16 h-16 mx-auto mb-4 text-primary" />
+                        <h3 className="text-3xl font-extrabold mb-2">{currentDrawerName} is drawing!</h3>
+                        <p className="text-lg opacity-90">Get ready to guess</p>
+                      </motion.div>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
               </div>
             </>
@@ -792,7 +842,7 @@ export default function Room() {
         </section>
 
         {/* Right Sidebar - Chat */}
-        <aside className="w-80 bg-card border-l border-border flex flex-col h-full overflow-hidden">
+        <aside className="w-80 bg-card border-l border-border flex flex-col h-full">
           <Chat />
         </aside>
       </main>

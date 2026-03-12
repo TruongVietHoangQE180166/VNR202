@@ -112,6 +112,7 @@ export default function Chat() {
     
     // Optimistic update
     useGameStore.getState().addMessage(tempMessage);
+    soundManager.play('send');
 
     await supabase.from('messages').insert({
       id: tempMessage.id,
@@ -135,7 +136,11 @@ export default function Chat() {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`text-sm ${msg.is_system ? 'text-accent font-medium italic' : 'text-muted-foreground'}`}
+            className={`text-sm py-1 px-2 rounded-md ${
+              msg.is_system 
+                ? 'bg-primary/10 text-primary font-bold italic border border-primary/20 text-center my-2' 
+                : 'text-muted-foreground'
+            }`}
           >
             {!msg.is_system && (
               <span className="font-bold text-primary mr-2">
