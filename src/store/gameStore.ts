@@ -9,7 +9,7 @@ export interface RoomSettings {
 
 export interface Room {
   id: string;
-  status: 'waiting' | 'playing' | 'round_over' | 'finished';
+  status: 'waiting' | 'starting' | 'playing' | 'round_over' | 'finished';
   settings: RoomSettings;
   current_round: number;
   current_drawer_id: string | null;

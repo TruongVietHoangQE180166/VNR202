@@ -22,7 +22,6 @@ export default function Room() {
   const [showRoundOver, setShowRoundOver] = useState(false);
   const [showYourTurn, setShowYourTurn] = useState(false);
   const [showCorrectGuess, setShowCorrectGuess] = useState(false);
-  const [isStarting, setIsStarting] = useState(false);
   const [prevDrawerId, setPrevDrawerId] = useState<string | null>(null);
   const [prevHasGuessed, setPrevHasGuessed] = useState(false);
 
@@ -319,7 +318,9 @@ export default function Room() {
       return;
     }
     
-    setIsStarting(true);
+    // Update status to starting so everyone sees loading
+    await supabase.from('rooms').update({ status: 'starting' }).eq('id', room.id);
+    
     try {
       const startMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
       
@@ -335,7 +336,7 @@ export default function Room() {
     } catch (error) {
       console.error("Error starting game:", error);
       alert("Failed to start game.");
-      setIsStarting(false);
+      await supabase.from('rooms').update({ status: 'waiting' }).eq('id', room.id);
     }
   };
 
@@ -359,7 +360,8 @@ export default function Room() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [currentPlayer]);
 
-  if (loading || !room || isStarting) {
+  if (loading || !room || room.status === 'starting') {
+    const isStarting = room?.status === 'starting';
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
