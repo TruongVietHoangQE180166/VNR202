@@ -459,7 +459,7 @@ export default function Room() {
       await startTurn(players[0].id, 1, []);
     } catch (error) {
       console.error("Error starting game:", error);
-      alert("Failed to start game.");
+      alert("Không thể bắt đầu trò chơi.");
       await supabase.from('rooms').update({ status: 'waiting' }).eq('id', room.id);
     }
   };

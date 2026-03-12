@@ -217,7 +217,7 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
                 value={color === '#FFFFFF' ? '#000000' : color} 
                 onChange={(e) => setColor(e.target.value)}
                 className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer"
-                title="Custom Color"
+                title="Màu tùy chỉnh"
               />
             </div>
             
@@ -230,7 +230,7 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
                 onClick={() => setColor(c)}
                 className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 shrink-0 ${color === c ? 'border-foreground scale-110' : 'border-transparent shadow-sm'}`}
                 style={{ backgroundColor: c }}
-                title="Color"
+                title="Màu sắc"
               />
             ))}
 
@@ -240,7 +240,7 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
             <button
               onClick={() => setColor('#FFFFFF')}
               className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform hover:scale-110 shrink-0 ${color === '#FFFFFF' ? 'border-foreground bg-muted scale-110' : 'border-transparent bg-background shadow-sm'}`}
-              title="Eraser"
+              title="Tẩy"
             >
               <Eraser className="w-4 h-4 text-foreground" />
             </button>
@@ -257,7 +257,7 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
                 value={lineWidth}
                 onChange={(e) => setLineWidth(parseInt(e.target.value))}
                 className="w-20 sm:w-24 accent-primary"
-                title="Brush Size"
+                title="Kích thước bút"
               />
               <div 
                 className="w-4 h-4 rounded-full bg-foreground flex items-center justify-center"
@@ -270,7 +270,7 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
               onClick={undo}
               disabled={history.length === 0}
               className="p-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors"
-              title="Undo"
+              title="Hoàn tác"
             >
               <Undo2 className="w-5 h-5" />
             </button>
@@ -279,7 +279,7 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
             <button
               onClick={clearCanvas}
               className="p-2 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-xl transition-colors"
-              title="Clear Canvas"
+              title="Xóa tất cả"
             >
               <Trash2 className="w-5 h-5" />
             </button>

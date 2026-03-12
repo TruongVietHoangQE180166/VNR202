@@ -46,7 +46,7 @@ export default function RoomLoading({ title, subtitle }: RoomLoadingProps) {
         </div>
         
         <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-6 drop-shadow-sm">
-          {title || "Draw & Guess"}
+          {title || "Vẽ & Đoán"}
         </h1>
         
         <div className="w-64 h-2 bg-muted rounded-full overflow-hidden relative">
@@ -58,7 +58,7 @@ export default function RoomLoading({ title, subtitle }: RoomLoadingProps) {
           />
         </div>
         <p className="mt-4 text-sm font-medium text-muted-foreground uppercase tracking-widest">
-          {subtitle || "Please wait..."}
+          {subtitle || "Vui lòng chờ..."}
         </p>
       </motion.div>
     </div>

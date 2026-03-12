@@ -20,15 +20,32 @@ export default function WordDisplay() {
       return;
     }
 
-    // Calculate hints based on time
+    // Generate a deterministic random order of indices for hints
+    const word = room.current_word;
+    const startTime = room.word_start_time;
+    
+    // Simple hash function for deterministic randomness
+    const hash = (str: string) => {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) - h) + str.charCodeAt(i);
+        h |= 0;
+      }
+      return h;
+    };
+
+    const validIndices = word.split('').map((_, i) => i).filter(i => word[i] !== ' ');
+    const shuffledIndices = [...validIndices].sort((a, b) => {
+      return hash(word + startTime + a) - hash(word + startTime + b);
+    });
+
     const updateDisplay = () => {
-      const startTime = new Date(room.word_start_time!).getTime();
+      const startTimeMs = new Date(room.word_start_time!).getTime();
       const now = new Date().getTime();
-      const elapsed = (now - startTime) / 1000;
+      const elapsed = (now - startTimeMs) / 1000;
       const totalTime = room.settings.drawTime;
       const progress = elapsed / totalTime;
 
-      const word = room.current_word!;
       const hintsCount = room.settings.hints;
       
       let charsToShow = 0;
@@ -38,33 +55,18 @@ export default function WordDisplay() {
         if (progress > 0.8 && hintsCount >= 3) charsToShow = 3;
       }
 
-      // We need consistent hints, so we pick the first 'charsToShow' characters that are not spaces
-      const words = word.split(' ');
-      const displayWords = words.map(w => {
-        let display = '';
-        for (let i = 0; i < w.length; i++) {
-          display += '_';
+      const activeHintIndices = shuffledIndices.slice(0, charsToShow);
+
+      let finalDisplay = '';
+      for (let i = 0; i < word.length; i++) {
+        if (word[i] === ' ') {
+          finalDisplay += ' ';
+        } else if (activeHintIndices.includes(i)) {
+          finalDisplay += word[i];
+        } else {
+          finalDisplay += '_';
         }
-        return display;
-      });
-
-      if (isDrawer) {
-        setDisplayWord(word);
-        return;
       }
-
-      // Apply hints
-      let hintsApplied = 0;
-      let finalDisplay = words.map((w, wordIdx) => {
-        let chars = w.split('');
-        return chars.map((char, charIdx) => {
-          if (hintsApplied < charsToShow) {
-            hintsApplied++;
-            return char;
-          }
-          return '_';
-        }).join('');
-      }).join(' ');
 
       setDisplayWord(finalDisplay);
     };

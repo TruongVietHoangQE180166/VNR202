@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useGameStore } from '../store/gameStore';
-import { Palette, Users, Settings, Play, Pencil, Volume2, VolumeX } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Palette, Users, Settings, Play, Pencil, Volume2, VolumeX, Trophy, MessageSquare, Info, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { soundManager } from '../lib/sounds';
+import GameplayModal from '../components/GameplayModal';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function Home() {
   const [playerName, setPlayerName] = useState('');
   const [isMuted, setIsMuted] = useState(soundManager.getIsMuted());
   const [volume, setVolume] = useState(soundManager.getVolume());
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     soundManager.playBGM();
@@ -51,7 +53,7 @@ export default function Home() {
 
       if (roomError) throw roomError;
 
-      setCurrentPlayer({ id: hostId, name: 'Host', isHost: true });
+      setCurrentPlayer({ id: hostId, name: 'Chủ phòng', isHost: true });
       navigate(`/room/${room.id}`);
     } catch (error: any) {
       console.error('Error creating room:', error);
@@ -352,9 +354,25 @@ export default function Home() {
               </motion.button>
             </motion.div>
           )}
+          <div className="flex flex-col gap-4 mt-8 relative z-10">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowGuide(true)}
+              className="flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors py-2"
+            >
+              <Info className="w-4 h-4" />
+              Hướng dẫn cách chơi
+            </motion.button>
           </div>
-        </motion.div>
+        </div>
       </motion.div>
-    </div>
+    </motion.div>
+
+    <GameplayModal 
+      isOpen={showGuide} 
+      onClose={() => setShowGuide(false)} 
+    />
+  </div>
   );
 }
