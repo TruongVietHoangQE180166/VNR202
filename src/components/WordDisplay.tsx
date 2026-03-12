@@ -37,19 +37,34 @@ export default function WordDisplay() {
       }
 
       // We need consistent hints, so we pick the first 'charsToShow' characters that are not spaces
-      let newDisplay = '';
-      let shown = 0;
-      for (let i = 0; i < word.length; i++) {
-        if (word[i] === ' ') {
-          newDisplay += '  ';
-        } else if (shown < charsToShow) {
-          newDisplay += word[i] + ' ';
-          shown++;
-        } else {
-          newDisplay += '_ ';
+      const words = word.split(' ');
+      const displayWords = words.map(w => {
+        let display = '';
+        for (let i = 0; i < w.length; i++) {
+          display += '_';
         }
+        return display;
+      });
+
+      if (isDrawer) {
+        setDisplayWord(word);
+        return;
       }
-      setDisplayWord(newDisplay.trim());
+
+      // Apply hints
+      let hintsApplied = 0;
+      let finalDisplay = words.map((w, wordIdx) => {
+        let chars = w.split('');
+        return chars.map((char, charIdx) => {
+          if (hintsApplied < charsToShow) {
+            hintsApplied++;
+            return char;
+          }
+          return '_';
+        }).join('');
+      }).join(' ');
+
+      setDisplayWord(finalDisplay);
     };
 
     updateDisplay();
@@ -59,9 +74,24 @@ export default function WordDisplay() {
 
   if (!room || !room.current_word) return null;
 
+  const isDrawer = room.current_drawer_id === currentPlayer?.id;
+
   return (
-    <div className="text-3xl font-mono tracking-[0.5em] font-bold text-foreground">
-      {displayWord}
+    <div className="flex flex-wrap justify-center gap-8">
+      {displayWord.split(' ').map((wordPart, wordIdx) => (
+        <div key={wordIdx} className="flex gap-2">
+          {wordPart.split('').map((char, charIdx) => (
+            <div 
+              key={charIdx} 
+              className={`w-8 h-10 border-b-4 flex items-center justify-center text-3xl font-black uppercase ${
+                char === '_' ? 'border-muted-foreground/30 text-transparent' : 'border-primary text-foreground'
+              }`}
+            >
+              {char !== '_' ? char : ''}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

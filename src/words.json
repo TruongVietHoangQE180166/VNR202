@@ -1,12 +1,13 @@
 [
-  "apple", "banana", "cat", "dog", "elephant", "fish", "guitar", "house", "ice cream", "jellyfish",
-  "kite", "lion", "monkey", "nest", "orange", "penguin", "queen", "rabbit", "snake", "tree",
-  "umbrella", "volcano", "watermelon", "xylophone", "yacht", "zebra", "computer", "keyboard", "mouse", "monitor",
-  "sun", "moon", "star", "cloud", "rain", "snow", "mountain", "river", "ocean", "beach",
-  "car", "bus", "train", "airplane", "helicopter", "bicycle", "motorcycle", "boat", "ship", "submarine",
-  "pizza", "burger", "sandwich", "hot dog", "taco", "sushi", "noodle", "soup", "salad", "steak",
-  "doctor", "nurse", "teacher", "police", "firefighter", "pilot", "astronaut", "chef", "artist", "musician",
-  "football", "basketball", "baseball", "tennis", "soccer", "golf", "volleyball", "swimming", "running", "cycling",
-  "book", "pen", "pencil", "notebook", "eraser", "ruler", "scissors", "glue", "paper", "calculator",
-  "phone", "tablet", "laptop", "television", "camera", "headphones", "speaker", "microphone", "watch", "clock"
+  "táo", "chuối", "con mèo", "con chó", "con voi", "con cá", "đàn ghi ta", "ngôi nhà", "kem", "con sứa",
+  "con diều", "con sư tử", "con khỉ", "tổ chim", "quả cam", "chim cánh cụt", "nữ hoàng", "con thỏ", "con rắn", "cái cây",
+  "cái ô", "núi lửa", "dưa hấu", "đàn mộc cầm", "du thuyền", "con ngựa vằn", "máy tính", "bàn phím", "con chuột", "màn hình",
+  "mặt trời", "mặt trăng", "ngôi sao", "đám mây", "mưa", "tuyết", "núi", "sông", "đại dương", "bãi biển",
+  "ô tô", "xe buýt", "tàu hỏa", "máy bay", "trực thăng", "xe đạp", "xe máy", "thuyền", "tàu thủy", "tàu ngầm",
+  "pizza", "bánh mì kẹp", "bánh mì", "xúc xích", "taco", "sushi", "mì", "canh", "salad", "bít tết",
+  "bác sĩ", "y tá", "giáo viên", "cảnh sát", "lính cứu hỏa", "phi công", "phi hành gia", "đầu bếp", "họa sĩ", "nhạc sĩ",
+  "bóng đá", "bóng rổ", "bóng chày", "quần vợt", "bóng đá", "golf", "bóng chuyền", "bơi lội", "chạy bộ", "đạp xe",
+  "sách", "bút", "bút chì", "vở", "tẩy", "thước kẻ", "kéo", "keo dán", "giấy", "máy tính bỏ túi",
+  "điện thoại", "máy tính bảng", "máy tính xách tay", "tivi", "máy ảnh", "tai nghe", "loa", "micro", "đồng hồ", "đồng hồ treo tường",
+  "hot dog", "ice cream", "hamburger", "mặt nạ", "con rồng", "lâu đài", "thành phố", "rừng rậm", "sa mạc", "đảo"
 ]
