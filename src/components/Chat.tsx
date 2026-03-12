@@ -74,7 +74,7 @@ export default function Chat() {
         await supabase.from('messages').insert({
           id: sysMsgId,
           room_id: room.id,
-          content: `${currentPlayer.name} guessed the word!`,
+          content: `${currentPlayer.name} đã đoán đúng từ khóa!`,
           is_system: true,
         });
 
@@ -112,7 +112,7 @@ export default function Chat() {
   return (
     <div className="flex flex-col h-full bg-card">
       <div className="p-4 border-b border-border">
-        <h2 className="font-semibold text-card-foreground">Chat</h2>
+        <h2 className="font-semibold text-card-foreground">Trò chuyện</h2>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -127,7 +127,7 @@ export default function Chat() {
           >
             {!msg.is_system && (
               <span className="font-bold text-primary mr-2">
-                {msg.player_id === currentPlayer?.id ? 'You' : msg.player_name}:
+                {msg.player_id === currentPlayer?.id ? 'Bạn' : msg.player_name}:
               </span>
             )}
             <span className="break-words">{msg.content}</span>
@@ -143,10 +143,10 @@ export default function Chat() {
           onChange={(e) => setInput(e.target.value)}
           placeholder={
             currentPlayer?.isHost 
-              ? "Hosts can only observe" 
+              ? "Chủ phòng chỉ có thể quan sát" 
               : isDrawer 
-                ? "You are drawing..." 
-                : "Type your guess..."
+                ? "Bạn đang vẽ..." 
+                : "Nhập dự đoán của bạn..."
           }
           disabled={currentPlayer?.isHost || isDrawer}
           className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"

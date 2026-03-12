@@ -4,13 +4,16 @@ import { supabase } from '../lib/supabase';
 import { useGameStore, Room as RoomType, Player, Message } from '../store/gameStore';
 import Canvas from '../components/Canvas';
 import Chat from '../components/Chat';
-import PlayerList from '../components/PlayerList';
 import WordDisplay from '../components/WordDisplay';
-import Timer from '../components/Timer';
-import { Users, LogOut, Play, Trophy, Palette, Loader2, Pencil, Volume2, VolumeX } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { motion, AnimatePresence } from 'motion/react';
 import { soundManager } from '../lib/sounds';
+
+import RoomLoading from '../components/RoomLoading';
+import GameResults from '../components/GameResults';
+import RoomHeader from '../components/RoomHeader';
+import RoomSidebar from '../components/RoomSidebar';
+import GameOverlays from '../components/GameOverlays';
+import WaitingRoom from '../components/WaitingRoom';
 
 import WORDS from '../words.json';
 
@@ -20,18 +23,16 @@ export default function Room() {
   const { currentPlayer, room, players, messages, setRoom, setPlayers, setMessages, addMessage } = useGameStore();
   const [loading, setLoading] = useState(true);
   const [channel, setChannel] = useState<any>(null);
-  const [showRoundOver, setShowRoundOver] = useState(false);
   const [showYourTurn, setShowYourTurn] = useState(false);
   const [showCorrectGuess, setShowCorrectGuess] = useState(false);
   const [showTurnAnnouncement, setShowTurnAnnouncement] = useState(false);
   const [currentDrawerName, setCurrentDrawerName] = useState('');
-  const [isMuted, setIsMuted] = useState(soundManager.getIsMuted());
-  const [volume, setVolume] = useState(soundManager.getVolume());
   const [prevDrawerId, setPrevDrawerId] = useState<string | null>(null);
   const [prevScores, setPrevScores] = useState<Record<string, number>>({});
   const [scoreGains, setScoreGains] = useState<Record<string, number>>({});
 
   const [prevStatus, setPrevStatus] = useState<string | null>(null);
+  const [isTransitioningToResults, setIsTransitioningToResults] = useState(false);
   const [prevPlayerCount, setPrevPlayerCount] = useState(0);
   const lastHandledGuessRef = useRef<boolean>(false);
 
@@ -61,21 +62,31 @@ export default function Room() {
     // Play roundOver sound
     if (room.status === 'round_over' && prevStatus !== 'round_over') {
       soundManager.play('roundOver');
-      
-      // Calculate score gains
-      const gains: Record<string, number> = {};
-      players.forEach(p => {
-        const prevScore = prevScores[p.id] || 0;
-        if (p.score > prevScore) {
-          gains[p.id] = p.score - prevScore;
-        }
-      });
-      setScoreGains(gains);
     }
 
-    if (room.status === 'finished' && prevStatus !== 'finished') {
-      soundManager.play('gameOver');
-      triggerConfetti();
+    // Continually update score gains while in round_over to catch realtime updates
+    if (room.status === 'round_over') {
+      const gains: Record<string, number> = {};
+      let hasChange = false;
+      players.forEach(p => {
+        const prevScore = prevScores[p.id] || 0;
+        if (p.score !== prevScore) {
+          const diff = p.score - prevScore;
+          gains[p.id] = diff;
+          if (scoreGains[p.id] !== diff) {
+            hasChange = true;
+          }
+        }
+      });
+      // Update only if values actually changed to avoid unnecessary re-renders
+      if (hasChange) {
+        setScoreGains(gains);
+      }
+    }
+
+    if (room.status === 'finished' && prevStatus && prevStatus !== 'finished') {
+      setIsTransitioningToResults(true);
+      setTimeout(() => setIsTransitioningToResults(false), 3000);
     }
 
     // Play join/leave sounds
@@ -125,7 +136,8 @@ export default function Room() {
     const me = players.find(p => p.id === currentPlayer.id);
     const isDrawer = room.current_drawer_id === currentPlayer.id;
     
-    if (me && me.has_guessed && !lastHandledGuessRef.current && !isDrawer) {
+    // Only trigger "Correct" confetti if we are actively playing and just guessed
+    if (room.status === 'playing' && me && me.has_guessed && !lastHandledGuessRef.current && !isDrawer) {
       setShowCorrectGuess(true);
       soundManager.play('correct');
       triggerConfetti();
@@ -134,7 +146,7 @@ export default function Room() {
     } else if (me && !me.has_guessed) {
       lastHandledGuessRef.current = false;
     }
-  }, [room?.status, room?.current_drawer_id, players, currentPlayer, prevDrawerId, prevStatus, prevScores]);
+  }, [room?.status, room?.current_drawer_id, players, currentPlayer, prevDrawerId, prevStatus, prevScores, room?.id]);
 
   useEffect(() => {
     if (!id || !currentPlayer) {
@@ -181,7 +193,7 @@ export default function Room() {
         setLoading(false);
       } catch (error) {
         console.error('Error fetching initial data:', error);
-        alert('Failed to load room data.');
+        alert('Không thể tải dữ liệu phòng.');
         navigate('/');
       }
     };
@@ -290,7 +302,7 @@ export default function Room() {
     await supabase.from('messages').insert({
       id: sysMsgId,
       room_id: room.id,
-      content: `The word was: ${room.current_word}`,
+      content: `Từ khóa là: ${room.current_word}`,
       is_system: true,
     });
 
@@ -353,14 +365,14 @@ export default function Room() {
         room_id: room.id,
         player_id: null,
         player_name: null,
-        content: `Game Over!`,
+        content: `Trò chơi kết thúc!`,
         is_system: true,
         created_at: new Date().toISOString(),
       });
       await supabase.from('messages').insert({
         id: gameOverId,
         room_id: room.id,
-        content: `Game Over!`,
+        content: `Trò chơi kết thúc!`,
         is_system: true,
       });
     } else {
@@ -396,7 +408,7 @@ export default function Room() {
       room_id: room.id,
       player_id: null,
       player_name: null,
-      content: `${drawer?.name || 'Someone'} is now drawing!`,
+      content: `${drawer?.name || 'Ai đó'} đang bắt đầu vẽ!`,
       is_system: true,
       created_at: new Date().toISOString(),
     });
@@ -404,7 +416,7 @@ export default function Room() {
     await supabase.from('messages').insert({
       id: turnMsgId,
       room_id: room.id,
-      content: `${drawer?.name || 'Someone'} is now drawing!`,
+      content: `${drawer?.name || 'Ai đó'} đang bắt đầu vẽ!`,
       is_system: true,
     });
 
@@ -425,8 +437,8 @@ export default function Room() {
   };
 
   const startGame = async () => {
-    if (!room || players.length < 1) {
-      alert("Need at least 1 player to start the game.");
+    if (!room || players.length < 2) {
+      alert("Cần ít nhất 2 người chơi để bắt đầu trò chơi.");
       return;
     }
     
@@ -440,7 +452,7 @@ export default function Room() {
       await supabase.from('messages').insert({
         id: startMsgId,
         room_id: room.id,
-        content: `Game started! Round 1 of ${room.settings.rounds}`,
+        content: `Trò chơi bắt đầu! Vòng 1 / ${room.settings.rounds}`,
         is_system: true,
       });
 
@@ -473,391 +485,42 @@ export default function Room() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [currentPlayer]);
 
-  if (loading || !room || room.status === 'starting') {
-    const isStarting = room?.status === 'starting';
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.2, 1],
-              opacity: [0.3, 0.5, 0.3],
-            }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] rounded-full bg-primary/10 blur-3xl"
-          />
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.5, 1],
-              opacity: [0.2, 0.4, 0.2],
-            }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute -bottom-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-accent/10 blur-3xl"
-          />
-        </div>
+  if (loading || !room || room.status === 'starting' || isTransitioningToResults) {
+    let title = "Vẽ & Đoán";
+    let subtitle = "Vui lòng chờ...";
 
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", damping: 20 }}
-          className="relative z-10 flex flex-col items-center"
-        >
-          <div className="relative mb-8">
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
-            <Palette className="w-24 h-24 text-primary relative z-10 drop-shadow-lg" />
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 border-4 border-dashed border-primary/30 rounded-full"
-            />
-          </div>
-          
-          <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-6 drop-shadow-sm">
-            {isStarting ? "Starting Game..." : "Draw & Guess"}
-          </h1>
-          
-          <div className="w-64 h-2 bg-muted rounded-full overflow-hidden relative">
-            <motion.div
-              initial={{ width: "0%" }}
-              animate={{ width: "100%" }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-accent rounded-full"
-            />
-          </div>
-          <p className="mt-4 text-sm font-medium text-muted-foreground uppercase tracking-widest">
-            {isStarting ? "Preparing the first round" : "Entering Room..."}
-          </p>
-        </motion.div>
-      </div>
-    );
+    if (loading) {
+      title = currentPlayer?.isHost ? "Đang tạo phòng..." : "Đang tham gia...";
+      subtitle = "Đang kết nối đến máy chủ";
+    } else if (room?.status === 'starting') {
+      title = "Sẵn sàng!";
+      subtitle = "Bắt đầu vòng chơi đầu tiên";
+    } else if (isTransitioningToResults) {
+      title = "Kết thúc!";
+      subtitle = "Đang tính toán kết quả...";
+    }
+
+    return <RoomLoading title={title} subtitle={subtitle} />;
   }
 
-  if (room.status === 'finished') {
-    const finalResults = (room.settings as any).finalResults || [...players].sort((a, b) => b.score - a.score);
-    const podium = finalResults.slice(0, 3);
-    const others = finalResults.slice(3);
-
-    return (
-      <div className="min-h-screen bg-background flex flex-col overflow-hidden">
-        <header className="h-16 bg-card border-b border-border px-6 flex items-center justify-between flex-shrink-0 z-20">
-          <h1 className="text-xl font-bold text-card-foreground flex items-center gap-2">
-            <Palette className="w-6 h-6 text-primary" />
-            Draw & Guess - Results
-          </h1>
-          <button
-            onClick={handleLeave}
-            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Back to Home
-          </button>
-        </header>
-        
-        <main className="flex-1 relative flex flex-col items-center p-6 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-background to-background overflow-y-auto">
-          {/* Background Decoration */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary blur-[120px] rounded-full animate-pulse" />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent blur-[120px] rounded-full animate-pulse delay-1000" />
-          </div>
-
-          <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="text-center mb-12 relative z-10"
-          >
-            <motion.div
-              animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.1, 1] }}
-              transition={{ duration: 4, repeat: Infinity }}
-            >
-              <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(234,179,8,0.4)]" />
-            </motion.div>
-            <h2 className="text-6xl font-black text-foreground mb-2 tracking-tight">Final Standings</h2>
-            <p className="text-xl text-muted-foreground font-medium">What an amazing game!</p>
-          </motion.div>
-          
-          {/* Podium */}
-          <div className="flex items-end justify-center gap-4 mb-12 w-full max-w-4xl h-[400px] relative z-10">
-            {/* 2nd Place */}
-            {podium[1] && (
-              <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4, type: "spring" }}
-                className="flex flex-col items-center w-1/3 max-w-[200px]"
-              >
-                <div className="mb-4 text-center">
-                  <div className="w-16 h-16 rounded-full bg-slate-400/20 border-2 border-slate-400 flex items-center justify-center text-slate-400 font-bold text-xl mb-2 mx-auto">
-                    {podium[1].name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="font-bold text-lg truncate w-full px-2">{podium[1].name}</div>
-                  <div className="text-slate-400 font-mono font-bold">{podium[1].score} pts</div>
-                </div>
-                <div className="w-full h-40 bg-gradient-to-t from-slate-500/20 to-slate-500/40 rounded-t-2xl border-t-2 border-x-2 border-slate-500/50 flex items-center justify-center">
-                  <span className="text-5xl font-black text-slate-500/50">2</span>
-                </div>
-              </motion.div>
-            )}
-
-            {/* 1st Place */}
-            {podium[0] && (
-              <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2, type: "spring" }}
-                className="flex flex-col items-center w-1/3 max-w-[240px]"
-              >
-                <div className="mb-4 text-center relative">
-                  <motion.div
-                    animate={{ y: [-10, 0, -10] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute -top-10 left-1/2 -translate-x-1/2"
-                  >
-                    <Trophy className="w-10 h-10 text-yellow-500" />
-                  </motion.div>
-                  <div className="w-24 h-24 rounded-full bg-yellow-500/20 border-4 border-yellow-500 flex items-center justify-center text-yellow-500 font-bold text-4xl mb-2 mx-auto shadow-[0_0_20px_rgba(234,179,8,0.3)]">
-                    {podium[0].name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="font-black text-2xl truncate w-full px-2 text-yellow-600 dark:text-yellow-500">{podium[0].name}</div>
-                  <div className="text-yellow-600 dark:text-yellow-500 font-mono font-black text-xl">{podium[0].score} pts</div>
-                </div>
-                <div className="w-full h-64 bg-gradient-to-t from-yellow-500/20 to-yellow-500/40 rounded-t-3xl border-t-4 border-x-4 border-yellow-500/50 flex items-center justify-center relative shadow-[0_-10px_30px_rgba(234,179,8,0.1)]">
-                  <span className="text-8xl font-black text-yellow-500/50">1</span>
-                </div>
-              </motion.div>
-            )}
-
-            {/* 3rd Place */}
-            {podium[2] && (
-              <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6, type: "spring" }}
-                className="flex flex-col items-center w-1/3 max-w-[200px]"
-              >
-                <div className="mb-4 text-center">
-                  <div className="w-16 h-16 rounded-full bg-amber-700/20 border-2 border-amber-700 flex items-center justify-center text-amber-700 font-bold text-xl mb-2 mx-auto">
-                    {podium[2].name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="font-bold text-lg truncate w-full px-2">{podium[2].name}</div>
-                  <div className="text-amber-700 font-mono font-bold">{podium[2].score} pts</div>
-                </div>
-                <div className="w-full h-28 bg-gradient-to-t from-amber-800/20 to-amber-800/40 rounded-t-2xl border-t-2 border-x-2 border-amber-800/50 flex items-center justify-center">
-                  <span className="text-4xl font-black text-amber-800/50">3</span>
-                </div>
-              </motion.div>
-            )}
-          </div>
-          
-          {/* All Players List */}
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="w-full max-w-2xl bg-card/50 backdrop-blur-sm rounded-3xl p-6 border border-border shadow-xl mb-12 relative z-10"
-          >
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4 px-2">Final Rankings</h3>
-            <div className="space-y-2">
-              {finalResults.map((p: any, i: number) => (
-                <div 
-                  key={p.id} 
-                  className={`flex items-center justify-between p-4 rounded-2xl border transition-colors ${
-                    i === 0 ? 'bg-yellow-500/10 border-yellow-500/30' : 
-                    i === 1 ? 'bg-slate-400/10 border-slate-400/30' : 
-                    i === 2 ? 'bg-amber-700/10 border-amber-700/30' : 
-                    'bg-background/50 border-border/50 hover:border-primary/30'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className={`font-mono font-bold w-6 text-center ${
-                      i === 0 ? 'text-yellow-500' : 
-                      i === 1 ? 'text-slate-400' : 
-                      i === 2 ? 'text-amber-700' : 
-                      'text-muted-foreground'
-                    }`}>
-                      {i + 1}
-                    </span>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                      i === 0 ? 'bg-yellow-500 text-white' : 
-                      i === 1 ? 'bg-slate-400 text-white' : 
-                      i === 2 ? 'bg-amber-700 text-white' : 
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      {p.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-bold flex items-center gap-2">
-                        {p.name}
-                        {p.id === currentPlayer?.id && (
-                          <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase font-bold">You</span>
-                        )}
-                      </span>
-                      {i < 3 && (
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          i === 0 ? 'text-yellow-600' : i === 1 ? 'text-slate-500' : 'text-amber-800'
-                        }`}>
-                          {i === 0 ? 'Champion' : i === 1 ? 'Runner Up' : '3rd Place'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono font-bold text-primary text-lg">{p.score}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase font-bold">Points</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-20 relative z-10">
-            {currentPlayer?.isHost && (
-              <button
-                onClick={async () => {
-                  soundManager.play('click');
-                  await supabase.from('rooms').update({ status: 'waiting', current_round: 1, used_words: [] }).eq('id', room.id);
-                }}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-black py-5 px-10 rounded-2xl shadow-[0_10px_20px_rgba(var(--primary),0.3)] transition-all hover:scale-105 active:scale-95 flex items-center gap-3 text-xl"
-              >
-                <Play className="w-6 h-6 fill-current" />
-                Play Again
-              </button>
-            )}
-            <button
-              onClick={handleLeave}
-              className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold py-5 px-10 rounded-2xl shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-3 text-xl"
-            >
-              <LogOut className="w-6 h-6" />
-              Exit to Menu
-            </button>
-          </div>
-        </main>
-      </div>
-    );
+  if (room.status === 'finished' && !isTransitioningToResults) {
+    return <GameResults onLeave={handleLeave} />;
   }
-
-  const toggleMute = () => {
-    const newMuted = soundManager.toggleMute();
-    setIsMuted(newMuted);
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    soundManager.setVolume(newVolume);
-    setVolume(newVolume);
-  };
 
   const isDrawer = currentPlayer?.id === room.current_drawer_id;
 
   return (
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="h-16 bg-card border-b border-border px-4 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-card-foreground flex items-center gap-2">
-            <Palette className="w-6 h-6 text-primary" />
-            Draw & Guess
-          </h1>
-          <div className="bg-background px-3 py-1 rounded-md text-sm font-mono text-muted-foreground border border-border">
-            Room: {room.id}
-          </div>
-        </div>
-        
-        {room.status === 'playing' && (
-          <div className="flex items-center gap-6">
-            <div className="text-center">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Round</div>
-              <div className="font-mono text-lg">{room.current_round} / {room.settings.rounds}</div>
-            </div>
-            <Timer />
-          </div>
-        )}
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
-            <button
-              onClick={toggleMute}
-              className="p-1 hover:bg-secondary rounded-md transition-colors text-muted-foreground hover:text-foreground"
-              title={isMuted ? "Unmute" : "Mute"}
-            >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={volume}
-              onChange={handleVolumeChange}
-              className="w-20 h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-            />
-          </div>
-
-          <button
-            onClick={() => {
-              soundManager.play('click');
-              handleLeave();
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
-          >
-          <LogOut className="w-4 h-4" />
-          Leave
-        </button>
-      </div>
-    </header>
+      <RoomHeader onLeave={handleLeave} />
 
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Players */}
-        <aside className="w-64 bg-card border-r border-border flex flex-col h-full">
-          <div className="p-4 border-b border-border">
-            <h2 className="font-semibold flex items-center gap-2 text-primary">
-              <Users className="w-4 h-4" />
-              Host
-            </h2>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                H
-              </div>
-              <span className="font-medium text-card-foreground">Host</span>
-            </div>
-          </div>
-
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Players ({players.length}/{room.settings.maxPlayers})
-            </h2>
-          </div>
-          <PlayerList />
-          
-          {currentPlayer?.isHost && room.status === 'waiting' && (
-            <div className="p-4 mt-auto border-t border-border">
-              <button
-                onClick={() => {
-                  soundManager.play('click');
-                  startGame();
-                }}
-                disabled={players.length < 1}
-                className="w-full bg-accent hover:bg-accent/90 disabled:bg-muted disabled:text-muted-foreground text-accent-foreground font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <Play className="w-5 h-5" />
-                Start Game
-              </button>
-            </div>
-          )}
-        </aside>
+        <RoomSidebar onStartGame={startGame} />
 
         {/* Center - Canvas & Word */}
         <section className="flex-1 flex flex-col bg-background relative overflow-hidden">
           {room.status === 'waiting' ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground overflow-y-auto p-4">
-              <Users className="w-16 h-16 mb-4 opacity-50" />
-              <h2 className="text-2xl font-bold text-foreground mb-2">Waiting for players...</h2>
-              <p>Share the Room ID with your friends to join.</p>
-              {currentPlayer?.isHost && (
-                <p className="mt-4 text-sm text-primary">You are the host. Click Start Game when ready.</p>
-              )}
-            </div>
+            <WaitingRoom />
           ) : (
             <>
               <div className="h-16 bg-card border-b border-border flex items-center justify-center flex-shrink-0">
@@ -868,139 +531,13 @@ export default function Room() {
                   <Canvas roomId={room.id} isDrawer={isDrawer} />
                 </div>
                 
-                {/* Overlay if not drawer and waiting for turn */}
-                <AnimatePresence>
-                  {!isDrawer && !room.current_drawer_id && room.status === 'playing' && (
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl border-4 border-transparent"
-                    >
-                      <motion.div 
-                        initial={{ scale: 0.9, y: 20 }}
-                        animate={{ scale: 1, y: 0 }}
-                        className="bg-card p-8 rounded-2xl shadow-2xl border border-border text-center max-w-md w-full mx-4"
-                      >
-                        <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-                        <div className="text-2xl font-bold text-foreground mb-2">Waiting for next round...</div>
-                        <p className="text-muted-foreground">Get ready to guess!</p>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                  
-                  {/* Time up overlay */}
-                  {room.status === 'round_over' && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-background/95 backdrop-blur-md flex items-center justify-center z-20 rounded-xl border-4 border-transparent"
-                    >
-                      <motion.div 
-                        initial={{ scale: 0.5, opacity: 0, rotate: -5 }}
-                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="bg-card p-8 rounded-3xl shadow-2xl border border-border text-center max-w-lg w-full mx-4 relative overflow-hidden flex flex-col max-h-[90%]"
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 pointer-events-none" />
-                        <h3 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-4 drop-shadow-sm relative z-10">Round Over!</h3>
-                        <p className="text-xl text-muted-foreground relative z-10 mb-6">
-                          The word was: <br/>
-                          <span className="font-black text-foreground text-3xl mt-1 block tracking-widest uppercase">{room.current_word}</span>
-                        </p>
-
-                        <div className="relative z-10 flex-1 overflow-y-auto pr-2 space-y-2">
-                          <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3 text-left">Score Changes</h4>
-                          {players.sort((a, b) => b.score - a.score).map((p) => (
-                            <div key={p.id} className="flex items-center justify-between p-3 bg-background/50 rounded-xl border border-border/50">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                                  {p.name.charAt(0).toUpperCase()}
-                                </div>
-                                <span className="font-medium text-sm">{p.name}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground">{p.score} pts</span>
-                                {scoreGains[p.id] && (
-                                  <span className="text-xs font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                                    +{scoreGains[p.id]}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-
-                  {/* Your Turn Overlay */}
-                  {showYourTurn && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-30 rounded-xl border-4 border-transparent pointer-events-none"
-                    >
-                      <motion.div 
-                        initial={{ scale: 0.5, opacity: 0, y: 50 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.8, opacity: 0, y: -50 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="bg-primary text-primary-foreground p-8 rounded-3xl shadow-2xl text-center max-w-md w-full mx-4"
-                      >
-                        <Palette className="w-16 h-16 mx-auto mb-4" />
-                        <h3 className="text-4xl font-extrabold mb-2">Your Turn!</h3>
-                        <p className="text-xl opacity-90">Get ready to draw</p>
-                      </motion.div>
-                    </motion.div>
-                  )}
-
-                  {/* Correct Guess Overlay */}
-                  {showCorrectGuess && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-background/40 backdrop-blur-sm flex items-center justify-center z-30 rounded-xl border-4 border-transparent pointer-events-none"
-                    >
-                      <motion.div 
-                        initial={{ scale: 0.5, opacity: 0, rotate: 10 }}
-                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                        exit={{ scale: 0.8, opacity: 0, rotate: -10 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="bg-accent text-accent-foreground p-8 rounded-3xl shadow-2xl text-center max-w-md w-full mx-4"
-                      >
-                        <Trophy className="w-16 h-16 mx-auto mb-4" />
-                        <h3 className="text-4xl font-extrabold mb-2">Correct!</h3>
-                        <p className="text-xl opacity-90">You guessed the word</p>
-                      </motion.div>
-                    </motion.div>
-                  )}
-
-                  {/* Turn Announcement Overlay (for others) */}
-                  {showTurnAnnouncement && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-background/40 backdrop-blur-sm flex items-center justify-center z-30 rounded-xl border-4 border-transparent pointer-events-none"
-                    >
-                      <motion.div 
-                        initial={{ scale: 0.5, opacity: 0, y: 50 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.8, opacity: 0, y: -50 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="bg-secondary text-secondary-foreground p-8 rounded-3xl shadow-2xl text-center max-w-md w-full mx-4"
-                      >
-                        <Pencil className="w-16 h-16 mx-auto mb-4 text-primary" />
-                        <h3 className="text-3xl font-extrabold mb-2">{currentDrawerName} is drawing!</h3>
-                        <p className="text-lg opacity-90">Get ready to guess</p>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <GameOverlays 
+                  showYourTurn={showYourTurn}
+                  showCorrectGuess={showCorrectGuess}
+                  showTurnAnnouncement={showTurnAnnouncement}
+                  currentDrawerName={currentDrawerName}
+                  scoreGains={scoreGains}
+                />
               </div>
             </>
           )}

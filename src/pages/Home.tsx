@@ -40,7 +40,7 @@ export default function Home() {
     try {
       // Host creates room
       const hostId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
-      const { data: room, error } = await supabase
+      const { data: room, error: roomError } = await supabase
         .from('rooms')
         .insert({
           host_id: hostId,
@@ -49,9 +49,9 @@ export default function Home() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (roomError) throw roomError;
 
-      setCurrentPlayer({ id: hostId, name: playerName || 'Host', isHost: true });
+      setCurrentPlayer({ id: hostId, name: 'Host', isHost: true });
       navigate(`/room/${room.id}`);
     } catch (error: any) {
       console.error('Error creating room:', error);
@@ -72,12 +72,30 @@ export default function Home() {
         .single();
 
       if (roomError || !room) {
-        alert('Room not found!');
+        alert('Không tìm thấy phòng!');
         return;
       }
 
       if (room.status !== 'waiting') {
-        alert('Game has already started!');
+        alert('Trò chơi đã bắt đầu!');
+        return;
+      }
+
+      // Check for unique name
+      const { data: existingPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('name')
+        .eq('room_id', joinId);
+      
+      if (playersError) throw playersError;
+
+      if (existingPlayers.some(p => p.name.toLowerCase() === playerName.toLowerCase())) {
+        alert('Tên này đã có người sử dụng! Vui lòng chọn tên khác.');
+        return;
+      }
+
+      if (existingPlayers.length >= room.settings.maxPlayers) {
+        alert('Phòng đã đầy!');
         return;
       }
 
@@ -97,7 +115,7 @@ export default function Home() {
       navigate(`/room/${joinId}`);
     } catch (error) {
       console.error('Error joining room:', error);
-      alert('Failed to join room.');
+      alert('Không thể vào phòng.');
     }
   };
 
@@ -129,7 +147,7 @@ export default function Home() {
             <button
               onClick={toggleMute}
               className="p-1 hover:bg-secondary rounded-md transition-all text-muted-foreground hover:text-foreground"
-              title={isMuted ? "Unmute" : "Mute"}
+              title={isMuted ? "Bật âm" : "Tắt âm"}
             >
               {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             </button>
@@ -189,7 +207,7 @@ export default function Home() {
             transition={{ delay: 0.2 }}
             className="text-5xl font-extrabold tracking-tight mb-3 bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent"
           >
-            Draw & Guess
+            Vẽ & Đoán
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -197,7 +215,7 @@ export default function Home() {
             transition={{ delay: 0.3 }}
             className="text-muted-foreground text-lg"
           >
-            Unleash your creativity and guess the masterpiece!
+            Phát huy tư duy sáng tạo và cùng đoán bức vẽ!
           </motion.p>
         </div>
 
@@ -215,13 +233,13 @@ export default function Home() {
               onClick={() => setIsCreating(false)}
               className={`flex-1 py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 ${!isCreating ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              Join Game
+              Tham gia
             </button>
             <button
               onClick={() => setIsCreating(true)}
               className={`flex-1 py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 ${isCreating ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              Host Game
+              Tạo phòng
             </button>
           </div>
 
@@ -236,25 +254,25 @@ export default function Home() {
                 className="space-y-5"
               >
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">Your Name</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Tên của bạn</label>
                 <input
                   type="text"
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
                   className="w-full bg-background border border-input rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Enter your name"
+                  placeholder="Nhập tên của bạn"
                   required
                   maxLength={20}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">Room ID</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Mã phòng</label>
                 <input
                   type="text"
                   value={joinId}
                   onChange={(e) => setJoinId(e.target.value)}
                   className="w-full bg-background border border-input rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Enter room ID"
+                  placeholder="Nhập mã phòng"
                   required
                 />
               </div>
@@ -265,7 +283,7 @@ export default function Home() {
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/25 mt-6"
               >
                 <Play className="w-5 h-5" />
-                Join Room
+                Vào phòng
               </motion.button>
             </motion.form>
           ) : (
@@ -278,7 +296,7 @@ export default function Home() {
             >
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Max Players</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Người chơi tối đa</label>
                   <input
                     type="number"
                     value={settings.maxPlayers}
@@ -289,7 +307,7 @@ export default function Home() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Rounds</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Số vòng</label>
                   <input
                     type="number"
                     value={settings.rounds}
@@ -300,7 +318,7 @@ export default function Home() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Draw Time (s)</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Thời gian vẽ (s)</label>
                   <input
                     type="number"
                     value={settings.drawTime}
@@ -312,7 +330,7 @@ export default function Home() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Hints</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Gợi ý</label>
                   <input
                     type="number"
                     value={settings.hints}
@@ -330,7 +348,7 @@ export default function Home() {
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-accent/25 mt-6"
               >
                 <Settings className="w-5 h-5" />
-                Create Room (Host)
+                Tạo phòng (Chủ phòng)
               </motion.button>
             </motion.div>
           )}
