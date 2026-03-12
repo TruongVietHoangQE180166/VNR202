@@ -71,6 +71,7 @@ export default function Room() {
       setPrevScores(scores);
       setScoreGains({});
       lastHandledGuessRef.current = false;
+      setShowCorrectGuess(false);
     }
 
     setPrevStatus(room.status);
@@ -102,12 +103,27 @@ export default function Room() {
     if (me && me.has_guessed && !lastHandledGuessRef.current) {
       setShowCorrectGuess(true);
       soundManager.play('correct');
+      
+      // Trigger confetti
+      const duration = 3 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+        if (timeLeft <= 0) return clearInterval(interval);
+        const particleCount = 50 * (timeLeft / duration);
+        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+      }, 250);
+
       setTimeout(() => setShowCorrectGuess(false), 3000);
       lastHandledGuessRef.current = true;
     } else if (me && !me.has_guessed) {
       lastHandledGuessRef.current = false;
     }
-  }, [room?.status, room?.current_drawer_id, players.length, currentPlayer, prevDrawerId, prevStatus, prevScores]);
+  }, [room?.status, room?.current_drawer_id, players, currentPlayer, prevDrawerId, prevStatus, prevScores]);
 
   useEffect(() => {
     if (!id || !currentPlayer) {
@@ -182,27 +198,6 @@ export default function Room() {
           // Play message sound if it's not a system message and not from current player
           if (!msg.is_system && msg.player_id !== currentPlayer?.id) {
             soundManager.play('message');
-          }
-          
-          // Trigger confetti if someone guessed the word
-          if (msg.is_system && msg.content.includes('guessed the word!') && msg.content.includes(currentPlayer?.name || '')) {
-            const duration = 3 * 1000;
-            const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
-
-            const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
-
-            const interval: any = setInterval(function() {
-              const timeLeft = animationEnd - Date.now();
-
-              if (timeLeft <= 0) {
-                return clearInterval(interval);
-              }
-
-              const particleCount = 50 * (timeLeft / duration);
-              confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-              confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-            }, 250);
           }
         }
       })
