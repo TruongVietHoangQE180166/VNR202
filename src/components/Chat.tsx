@@ -66,16 +66,7 @@ export default function Chat() {
 
         // Send system message
         const sysMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
-        useGameStore.getState().addMessage({
-          id: sysMsgId,
-          room_id: room.id,
-          player_id: null,
-          player_name: null,
-          content: `${currentPlayer.name} guessed the word!`,
-          is_system: true,
-          created_at: new Date().toISOString(),
-        });
-
+        
         await supabase.from('messages').insert({
           id: sysMsgId,
           room_id: room.id,

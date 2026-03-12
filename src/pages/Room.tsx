@@ -22,6 +22,7 @@ export default function Room() {
   const [showRoundOver, setShowRoundOver] = useState(false);
   const [showYourTurn, setShowYourTurn] = useState(false);
   const [showCorrectGuess, setShowCorrectGuess] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [prevDrawerId, setPrevDrawerId] = useState<string | null>(null);
   const [prevHasGuessed, setPrevHasGuessed] = useState(false);
 
@@ -209,15 +210,7 @@ export default function Room() {
 
     // Send system message with answer
     const sysMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
-    addMessage({
-      id: sysMsgId,
-      room_id: room.id,
-      player_id: null,
-      player_name: null,
-      content: `The word was: ${room.current_word}`,
-      is_system: true,
-      created_at: new Date().toISOString(),
-    });
+    
     await supabase.from('messages').insert({
       id: sysMsgId,
       room_id: room.id,
@@ -325,25 +318,25 @@ export default function Room() {
       alert("Need at least 1 player to start the game.");
       return;
     }
+    
+    setIsStarting(true);
+    try {
+      const startMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
+      
+      // We don't add optimistic message for system messages to prevent duplication
+      await supabase.from('messages').insert({
+        id: startMsgId,
+        room_id: room.id,
+        content: `Game started! Round 1 of ${room.settings.rounds}`,
+        is_system: true,
+      });
 
-    const startMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
-    addMessage({
-      id: startMsgId,
-      room_id: room.id,
-      player_id: null,
-      player_name: null,
-      content: `Game started! Round 1 of ${room.settings.rounds}`,
-      is_system: true,
-      created_at: new Date().toISOString(),
-    });
-    await supabase.from('messages').insert({
-      id: startMsgId,
-      room_id: room.id,
-      content: `Game started! Round 1 of ${room.settings.rounds}`,
-      is_system: true,
-    });
-
-    await startTurn(players[0].id, 1, []);
+      await startTurn(players[0].id, 1, []);
+    } catch (error) {
+      console.error("Error starting game:", error);
+      alert("Failed to start game.");
+      setIsStarting(false);
+    }
   };
 
   const handleLeave = async () => {
@@ -366,7 +359,7 @@ export default function Room() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [currentPlayer]);
 
-  if (loading || !room) {
+  if (loading || !room || isStarting) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -405,7 +398,7 @@ export default function Room() {
           </div>
           
           <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-6 drop-shadow-sm">
-            Draw & Guess
+            {isStarting ? "Starting Game..." : "Draw & Guess"}
           </h1>
           
           <div className="w-64 h-2 bg-muted rounded-full overflow-hidden relative">
@@ -417,9 +410,91 @@ export default function Room() {
             />
           </div>
           <p className="mt-4 text-sm font-medium text-muted-foreground uppercase tracking-widest">
-            Entering Room...
+            {isStarting ? "Preparing the first round" : "Entering Room..."}
           </p>
         </motion.div>
+      </div>
+    );
+  }
+
+  if (room.status === 'finished') {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="bg-card border-b border-border p-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-card-foreground flex items-center gap-2">
+            <Palette className="w-6 h-6 text-primary" />
+            Draw & Guess - Game Over
+          </h1>
+          <button
+            onClick={handleLeave}
+            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Back to Home
+          </button>
+        </header>
+        
+        <main className="flex-1 flex flex-col items-center justify-center p-4 bg-gradient-to-b from-background to-accent/5 overflow-y-auto">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", damping: 12 }}
+            className="text-center mb-10"
+          >
+            <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6 drop-shadow-lg" />
+            <h2 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-2">Final Standings</h2>
+            <p className="text-xl text-muted-foreground">Well played, everyone!</p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-card rounded-3xl p-8 w-full max-w-2xl border border-border shadow-2xl relative overflow-hidden mb-8"
+          >
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-accent to-primary" />
+            <div className="grid gap-4">
+              {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
+                <motion.div 
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 + i * 0.1 }}
+                  key={p.id} 
+                  className={`flex items-center justify-between p-5 rounded-2xl border ${i === 0 ? 'bg-yellow-500/10 border-yellow-500/50 shadow-lg scale-105' : i === 1 ? 'bg-slate-500/10 border-slate-500/50' : i === 2 ? 'bg-amber-700/10 border-amber-700/50' : 'bg-background border-border'}`}
+                >
+                  <div className="flex items-center gap-5">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${i === 0 ? 'bg-yellow-500 text-white' : i === 1 ? 'bg-slate-400 text-white' : i === 2 ? 'bg-amber-600 text-white' : 'bg-muted text-muted-foreground'}`}>
+                      {i + 1}
+                    </div>
+                    <div>
+                      <span className={`font-bold text-xl block ${i === 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-foreground'}`}>
+                        {p.name}
+                        {p.id === currentPlayer?.id && <span className="ml-2 text-[10px] bg-primary/20 text-primary px-2 py-1 rounded-full uppercase font-bold align-middle">You</span>}
+                      </span>
+                      {i === 0 && <span className="text-xs text-yellow-600 font-bold uppercase tracking-wider">Winner!</span>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono font-black text-2xl text-primary">{p.score}</span>
+                    <span className="text-xs text-muted-foreground block uppercase font-bold">Points</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+          
+          {currentPlayer?.isHost && (
+            <button
+              onClick={async () => {
+                await supabase.from('rooms').update({ status: 'waiting', current_round: 1, used_words: [] }).eq('id', room.id);
+              }}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-8 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
+            >
+              <Play className="w-6 h-6" />
+              Play Again
+            </button>
+          )}
+        </main>
       </div>
     );
   }
@@ -499,9 +574,9 @@ export default function Room() {
         </aside>
 
         {/* Center - Canvas & Word */}
-        <section className="flex-1 flex flex-col bg-background relative">
+        <section className="flex-1 flex flex-col bg-background relative overflow-hidden">
           {room.status === 'waiting' ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground overflow-y-auto p-4">
               <Users className="w-16 h-16 mb-4 opacity-50" />
               <h2 className="text-2xl font-bold text-foreground mb-2">Waiting for players...</h2>
               <p>Share the Room ID with your friends to join.</p>
@@ -509,57 +584,12 @@ export default function Room() {
                 <p className="mt-4 text-sm text-primary">You are the host. Click Start Game when ready.</p>
               )}
             </div>
-          ) : room.status === 'finished' ? (
-            <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-background to-accent/5">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", damping: 12 }}
-                className="text-center mb-10"
-              >
-                <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6 drop-shadow-lg" />
-                <h2 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-2">Game Over!</h2>
-                <p className="text-xl text-muted-foreground">Here are the final standings</p>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="bg-card rounded-3xl p-8 w-full max-w-lg border border-border shadow-2xl relative overflow-hidden"
-              >
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-accent to-primary" />
-                <h3 className="text-2xl font-bold mb-6 text-center">Final Scores</h3>
-                <div className="space-y-4">
-                  {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
-                    <motion.div 
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.3 + i * 0.1 }}
-                      key={p.id} 
-                      className={`flex items-center justify-between p-4 rounded-xl border ${i === 0 ? 'bg-yellow-500/10 border-yellow-500/50 shadow-sm' : i === 1 ? 'bg-slate-500/10 border-slate-500/50' : i === 2 ? 'bg-amber-700/10 border-amber-700/50' : 'bg-background border-border'}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${i === 0 ? 'bg-yellow-500 text-white' : i === 1 ? 'bg-slate-400 text-white' : i === 2 ? 'bg-amber-600 text-white' : 'bg-muted text-muted-foreground'}`}>
-                          {i + 1}
-                        </div>
-                        <span className={`font-bold text-lg ${i === 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-foreground'}`}>
-                          {p.name}
-                          {p.id === currentPlayer?.id && <span className="ml-2 text-[10px] bg-primary/20 text-primary px-2 py-1 rounded-full uppercase font-bold align-middle">You</span>}
-                        </span>
-                      </div>
-                      <span className="font-mono font-bold text-xl text-primary">{p.score} <span className="text-sm text-muted-foreground font-sans font-normal">pts</span></span>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
           ) : (
             <>
-              <div className="h-16 bg-card border-b border-border flex items-center justify-center">
+              <div className="h-16 bg-card border-b border-border flex items-center justify-center flex-shrink-0">
                 <WordDisplay />
               </div>
-              <div className="flex-1 relative p-4 flex items-center justify-center">
+              <div className="flex-1 relative p-4 flex items-center justify-center overflow-hidden">
                 <div className="w-full h-full max-w-4xl max-h-[600px] bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-border">
                   <Canvas roomId={room.id} isDrawer={isDrawer} />
                 </div>
