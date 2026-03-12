@@ -4,6 +4,7 @@ import { Pencil, CheckCircle2 } from 'lucide-react';
 
 export default function PlayerList() {
   const { players, room, currentPlayer } = useGameStore();
+  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
 
   return (
     <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -20,7 +21,7 @@ export default function PlayerList() {
           </div>
         </div>
       )}
-      {players.map((player, index) => {
+      {sortedPlayers.map((player, index) => {
         const isDrawer = room?.current_drawer_id === player.id;
         
         return (
@@ -28,7 +29,7 @@ export default function PlayerList() {
             key={player.id}
             className={`flex items-center justify-between p-3 rounded-lg border ${
               player.has_guessed
-                ? 'bg-accent/20 border-accent/50'
+                ? 'bg-green-500/10 border-green-500/50'
                 : isDrawer
                 ? 'bg-primary/20 border-primary/50'
                 : 'bg-background/50 border-border/50'
@@ -43,7 +44,7 @@ export default function PlayerList() {
                     <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full uppercase font-bold">You</span>
                   )}
                   {isDrawer && <Pencil className="w-3 h-3 text-primary" />}
-                  {player.has_guessed && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                  {player.has_guessed && <CheckCircle2 className="w-5 h-5 text-green-500" />}
                 </span>
                 <span className="text-xs text-muted-foreground">{player.score} pts</span>
               </div>

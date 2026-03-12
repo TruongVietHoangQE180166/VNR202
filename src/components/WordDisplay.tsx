@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 
 export default function WordDisplay() {
-  const { room, currentPlayer } = useGameStore();
+  const { room, currentPlayer, players } = useGameStore();
   const [displayWord, setDisplayWord] = useState('');
 
   useEffect(() => {
@@ -12,8 +12,10 @@ export default function WordDisplay() {
     }
 
     const isDrawer = room.current_drawer_id === currentPlayer?.id;
+    const me = players.find(p => p.id === currentPlayer?.id);
+    const hasGuessed = me?.has_guessed;
     
-    if (isDrawer) {
+    if (isDrawer || hasGuessed) {
       setDisplayWord(room.current_word);
       return;
     }
@@ -70,7 +72,7 @@ export default function WordDisplay() {
     updateDisplay();
     const interval = setInterval(updateDisplay, 1000);
     return () => clearInterval(interval);
-  }, [room, currentPlayer]);
+  }, [room, currentPlayer, players]);
 
   if (!room || !room.current_word) return null;
 
