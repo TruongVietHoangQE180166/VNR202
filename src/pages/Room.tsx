@@ -25,6 +25,8 @@ export default function Room() {
   const [showCorrectGuess, setShowCorrectGuess] = useState(false);
   const [prevDrawerId, setPrevDrawerId] = useState<string | null>(null);
   const [prevHasGuessed, setPrevHasGuessed] = useState(false);
+  const [prevScores, setPrevScores] = useState<Record<string, number>>({});
+  const [scoreGains, setScoreGains] = useState<Record<string, number>>({});
 
   const [prevStatus, setPrevStatus] = useState<string | null>(null);
 
@@ -35,6 +37,30 @@ export default function Room() {
     if (room.status === 'starting' && prevStatus !== 'starting') {
       soundManager.play('start');
     }
+    
+    // Play roundOver sound
+    if (room.status === 'round_over' && prevStatus !== 'round_over') {
+      soundManager.play('roundOver');
+      
+      // Calculate score gains
+      const gains: Record<string, number> = {};
+      players.forEach(p => {
+        const prevScore = prevScores[p.id] || 0;
+        if (p.score > prevScore) {
+          gains[p.id] = p.score - prevScore;
+        }
+      });
+      setScoreGains(gains);
+    }
+
+    // Update prevScores when round starts or ends
+    if (room.status === 'playing' && prevStatus !== 'playing') {
+      const scores: Record<string, number> = {};
+      players.forEach(p => scores[p.id] = p.score);
+      setPrevScores(scores);
+      setScoreGains({});
+    }
+
     setPrevStatus(room.status);
     
     // Check if it's now your turn to draw
@@ -56,11 +82,11 @@ export default function Room() {
       setShowCorrectGuess(true);
       soundManager.play('correct');
       setTimeout(() => setShowCorrectGuess(false), 3000);
+      setPrevHasGuessed(true); // Update immediately to prevent double trigger
+    } else if (me && !me.has_guessed) {
+      setPrevHasGuessed(false);
     }
-    if (me) {
-      setPrevHasGuessed(me.has_guessed);
-    }
-  }, [room?.current_drawer_id, players, currentPlayer, prevDrawerId, prevHasGuessed]);
+  }, [room?.status, room?.current_drawer_id, players, currentPlayer, prevDrawerId, prevHasGuessed, prevStatus, prevScores]);
 
   useEffect(() => {
     if (!id || !currentPlayer) {
@@ -132,11 +158,16 @@ export default function Room() {
           const msg = payload.new as Message;
           addMessage(msg);
           
+          // Play message sound if it's not a system message and not from current player
+          if (!msg.is_system && msg.player_id !== currentPlayer?.id) {
+            soundManager.play('message');
+          }
+          
           // Trigger confetti if someone guessed the word
           if (msg.is_system && msg.content.includes('guessed the word!') && msg.content.includes(currentPlayer?.name || '')) {
             const duration = 3 * 1000;
             const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
 
             const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
@@ -585,9 +616,9 @@ export default function Room() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden h-[calc(100vh-64px)]">
         {/* Left Sidebar - Players */}
-        <aside className="w-64 bg-card border-r border-border flex flex-col">
+        <aside className="w-64 bg-card border-r border-border flex flex-col h-full overflow-hidden">
           <div className="p-4 border-b border-border">
             <h2 className="font-semibold flex items-center gap-2 text-primary">
               <Users className="w-4 h-4" />
@@ -671,20 +702,42 @@ export default function Room() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-background/90 backdrop-blur-md flex items-center justify-center z-20 rounded-xl border-4 border-transparent"
+                      className="absolute inset-0 bg-background/95 backdrop-blur-md flex items-center justify-center z-20 rounded-xl border-4 border-transparent"
                     >
                       <motion.div 
-                        initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+                        initial={{ scale: 0.5, opacity: 0, rotate: -5 }}
                         animate={{ scale: 1, opacity: 1, rotate: 0 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="bg-card p-10 rounded-3xl shadow-2xl border border-border text-center max-w-lg w-full mx-4 relative overflow-hidden"
+                        className="bg-card p-8 rounded-3xl shadow-2xl border border-border text-center max-w-lg w-full mx-4 relative overflow-hidden flex flex-col max-h-[90%]"
                       >
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 pointer-events-none" />
-                        <h3 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-6 drop-shadow-sm relative z-10">Round Over!</h3>
-                        <p className="text-2xl text-muted-foreground relative z-10">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 pointer-events-none" />
+                        <h3 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-4 drop-shadow-sm relative z-10">Round Over!</h3>
+                        <p className="text-xl text-muted-foreground relative z-10 mb-6">
                           The word was: <br/>
-                          <span className="font-black text-foreground text-4xl mt-2 block tracking-widest uppercase">{room.current_word}</span>
+                          <span className="font-black text-foreground text-3xl mt-1 block tracking-widest uppercase">{room.current_word}</span>
                         </p>
+
+                        <div className="relative z-10 flex-1 overflow-y-auto pr-2 space-y-2">
+                          <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3 text-left">Score Changes</h4>
+                          {players.sort((a, b) => b.score - a.score).map((p) => (
+                            <div key={p.id} className="flex items-center justify-between p-3 bg-background/50 rounded-xl border border-border/50">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                  {p.name.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="font-medium text-sm">{p.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{p.score} pts</span>
+                                {scoreGains[p.id] && (
+                                  <span className="text-xs font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                    +{scoreGains[p.id]}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </motion.div>
                     </motion.div>
                   )}
@@ -739,7 +792,7 @@ export default function Room() {
         </section>
 
         {/* Right Sidebar - Chat */}
-        <aside className="w-80 bg-card border-l border-border flex flex-col">
+        <aside className="w-80 bg-card border-l border-border flex flex-col h-full overflow-hidden">
           <Chat />
         </aside>
       </main>
