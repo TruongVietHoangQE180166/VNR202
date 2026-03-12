@@ -58,7 +58,9 @@ export const useGameStore = create<GameState>((set) => ({
   messages: [],
   
   setCurrentPlayer: (player) => set({ currentPlayer: player }),
-  setRoom: (room) => set({ room }),
+  setRoom: (room) => set((state) => ({ 
+    room: room && state.room ? { ...state.room, ...room } : room 
+  })),
   setPlayers: (players) => set({ players }),
   addMessage: (message) => set((state) => {
     if (state.messages.some(m => m.id === message.id)) return state;

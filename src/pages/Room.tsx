@@ -142,6 +142,9 @@ export default function Room() {
 
     // Polling fallback just in case realtime fails
     const pollingInterval = setInterval(async () => {
+      const { data: roomData } = await supabase.from('rooms').select('*').eq('id', id).single();
+      if (roomData) setRoom(roomData);
+
       const { data } = await supabase.from('players').select('*').eq('room_id', id).order('joined_at', { ascending: true });
       if (data) setPlayers(data);
       
@@ -271,21 +274,24 @@ export default function Room() {
   const startTurn = async (drawerId: string, round: number, usedWords: string[]) => {
     if (!room) return;
 
+    const safeUsedWords = usedWords || [];
+
     // Pick a new word
-    let availableWords = WORDS.filter(w => !usedWords.includes(w));
+    let availableWords = WORDS.filter(w => !safeUsedWords.includes(w));
     if (availableWords.length === 0) {
       availableWords = WORDS; // Reset if all used
-      usedWords = [];
+      safeUsedWords.length = 0;
     }
     
     const word = availableWords[Math.floor(Math.random() * availableWords.length)];
-    const newUsedWords = [...usedWords, word];
+    const newUsedWords = [...safeUsedWords, word];
 
     // Reset players has_guessed
-    await supabase.from('players').update({ has_guessed: false }).eq('room_id', room.id);
+    const { error: pError } = await supabase.from('players').update({ has_guessed: false }).eq('room_id', room.id);
+    if (pError) console.error("Error resetting players:", pError);
 
     // Update room
-    await supabase.from('rooms').update({
+    const { error: rError } = await supabase.from('rooms').update({
       status: 'playing',
       current_drawer_id: drawerId,
       current_word: word,
@@ -293,6 +299,7 @@ export default function Room() {
       current_round: round,
       used_words: newUsedWords,
     }).eq('id', room.id);
+    if (rError) console.error("Error updating room in startTurn:", rError);
 
     const drawer = players.find(p => p.id === drawerId);
     const drawerMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
@@ -318,12 +325,6 @@ export default function Room() {
       alert("Need at least 1 player to start the game.");
       return;
     }
-    
-    await supabase.from('rooms').update({
-      status: 'playing',
-      current_round: 1,
-      used_words: [],
-    }).eq('id', room.id);
 
     const startMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
     addMessage({
@@ -342,7 +343,7 @@ export default function Room() {
       is_system: true,
     });
 
-    startTurn(players[0].id, 1, []);
+    await startTurn(players[0].id, 1, []);
   };
 
   const handleLeave = async () => {
