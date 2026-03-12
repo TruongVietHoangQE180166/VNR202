@@ -20,7 +20,7 @@ export default function Chat() {
     setInput('');
 
     // Check if it's a guess
-    if (room.status === 'playing' && room.current_word && !currentPlayer.isHost) {
+    if (room.status === 'playing' && room.current_word) {
       const isDrawer = room.current_drawer_id === currentPlayer.id;
       const player = players.find(p => p.id === currentPlayer.id);
       
@@ -137,14 +137,13 @@ export default function Chat() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={currentPlayer?.isHost ? "Hosts can't chat" : "Type your guess..."}
-          disabled={currentPlayer?.isHost}
+          placeholder="Type your guess..."
           className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           maxLength={100}
         />
         <button
           type="submit"
-          disabled={!input.trim() || currentPlayer?.isHost}
+          disabled={!input.trim()}
           className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground p-2 rounded-lg transition-colors flex items-center justify-center"
         >
           <Send className="w-4 h-4" />

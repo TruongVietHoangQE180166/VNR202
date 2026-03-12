@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useGameStore } from '../store/gameStore';
-import { Palette, Users, Settings, Play } from 'lucide-react';
+import { Palette, Users, Settings, Play, Pencil } from 'lucide-react';
+import { motion } from 'motion/react';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -94,34 +95,102 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            rotate: [0, 360],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]"
+        />
+        <motion.div
+          animate={{
+            rotate: [360, 0],
+            scale: [1, 1.5, 1],
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-accent/5 blur-[120px]"
+        />
+      </div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-md w-full space-y-8 relative z-10"
+      >
         <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <Palette className="w-16 h-16 text-primary" />
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight mb-2">Draw & Guess</h1>
-          <p className="text-muted-foreground">Multiplayer drawing and guessing game</p>
+          <motion.div 
+            initial={{ scale: 0, rotate: -15 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+            className="flex justify-center mb-4 relative"
+          >
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+            <Palette className="w-20 h-20 text-primary relative z-10 drop-shadow-lg" />
+            <motion.div
+              animate={{ y: [-5, 5, -5], x: [5, -5, 5] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -right-4 -top-2"
+            >
+              <Pencil className="w-8 h-8 text-accent drop-shadow-md" />
+            </motion.div>
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-5xl font-extrabold tracking-tight mb-3 bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent"
+          >
+            Draw & Guess
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-muted-foreground text-lg"
+          >
+            Unleash your creativity and guess the masterpiece!
+          </motion.p>
         </div>
 
-        <div className="bg-card text-card-foreground p-6 rounded-2xl shadow-xl border border-border">
-          <div className="flex space-x-2 mb-6">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4, type: "spring", stiffness: 300, damping: 25 }}
+          className="bg-card/80 backdrop-blur-xl text-card-foreground p-8 rounded-3xl shadow-2xl border border-border/50 relative overflow-hidden"
+        >
+          {/* Subtle inner glow */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+          
+          <div className="flex space-x-2 mb-8 relative z-10 bg-muted/50 p-1 rounded-xl">
             <button
               onClick={() => setIsCreating(false)}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${!isCreating ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
+              className={`flex-1 py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 ${!isCreating ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Join Game
             </button>
             <button
               onClick={() => setIsCreating(true)}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${isCreating ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
+              className={`flex-1 py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 ${isCreating ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Host Game
             </button>
           </div>
 
-          {!isCreating ? (
-            <form onSubmit={handleJoinRoom} className="space-y-4">
+          <div className="relative z-10">
+            {!isCreating ? (
+              <motion.form 
+                key="join"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                onSubmit={handleJoinRoom} 
+                className="space-y-5"
+              >
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">Your Name</label>
                 <input
@@ -145,16 +214,24 @@ export default function Home() {
                   required
                 />
               </div>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/25 mt-6"
               >
-                <Play className="w-4 h-4" />
+                <Play className="w-5 h-5" />
                 Join Room
-              </button>
-            </form>
+              </motion.button>
+            </motion.form>
           ) : (
-            <div className="space-y-4">
+            <motion.div 
+              key="host"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-5"
+            >
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Max Players</label>
@@ -202,17 +279,20 @@ export default function Home() {
                   />
                 </div>
               </div>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleCreateRoom}
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-accent/25 mt-6"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-5 h-5" />
                 Create Room (Host)
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           )}
-        </div>
-      </div>
+          </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

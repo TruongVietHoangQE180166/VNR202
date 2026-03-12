@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { Eraser, Trash2, Paintbrush } from 'lucide-react';
 
 interface CanvasProps {
   roomId: string;
@@ -162,32 +163,70 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
   return (
     <div className="relative w-full h-full flex flex-col">
       {isDrawer && (
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between bg-card/90 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-border z-10">
-          <div className="flex items-center gap-2">
-            {['#000000', '#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#FFFFFF'].map((c) => (
+        <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between bg-card/95 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-border z-10 gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Color Picker */}
+            <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-border shadow-sm shrink-0 cursor-pointer hover:scale-110 transition-transform">
+              <input 
+                type="color" 
+                value={color === '#FFFFFF' ? '#000000' : color} 
+                onChange={(e) => setColor(e.target.value)}
+                className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer"
+                title="Custom Color"
+              />
+            </div>
+            
+            <div className="w-px h-6 bg-border mx-1" />
+
+            {/* Preset Colors */}
+            {['#000000', '#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'].map((c) => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-foreground scale-110' : 'border-transparent shadow-sm'}`}
+                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 shrink-0 ${color === c ? 'border-foreground scale-110' : 'border-transparent shadow-sm'}`}
                 style={{ backgroundColor: c }}
-                title={c === '#FFFFFF' ? 'Eraser' : 'Color'}
+                title="Color"
               />
             ))}
+
+            <div className="w-px h-6 bg-border mx-1" />
+
+            {/* Eraser */}
+            <button
+              onClick={() => setColor('#FFFFFF')}
+              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform hover:scale-110 shrink-0 ${color === '#FFFFFF' ? 'border-foreground bg-muted scale-110' : 'border-transparent bg-background shadow-sm'}`}
+              title="Eraser"
+            >
+              <Eraser className="w-4 h-4 text-foreground" />
+            </button>
           </div>
+
           <div className="flex items-center gap-4">
-            <input
-              type="range"
-              min="1"
-              max="20"
-              value={lineWidth}
-              onChange={(e) => setLineWidth(parseInt(e.target.value))}
-              className="w-24 accent-primary"
-            />
+            {/* Brush Size */}
+            <div className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-xl border border-border">
+              <Paintbrush className="w-4 h-4 text-muted-foreground" />
+              <input
+                type="range"
+                min="1"
+                max="30"
+                value={lineWidth}
+                onChange={(e) => setLineWidth(parseInt(e.target.value))}
+                className="w-20 sm:w-24 accent-primary"
+                title="Brush Size"
+              />
+              <div 
+                className="w-4 h-4 rounded-full bg-foreground flex items-center justify-center"
+                style={{ transform: `scale(${lineWidth / 30})` }}
+              />
+            </div>
+
+            {/* Clear Canvas */}
             <button
               onClick={clearCanvas}
-              className="px-3 py-1 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md text-sm font-medium transition-colors"
+              className="p-2 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-xl transition-colors"
+              title="Clear Canvas"
             >
-              Clear
+              <Trash2 className="w-5 h-5" />
             </button>
           </div>
         </div>

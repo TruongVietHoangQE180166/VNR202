@@ -7,7 +7,9 @@ import Chat from '../components/Chat';
 import PlayerList from '../components/PlayerList';
 import WordDisplay from '../components/WordDisplay';
 import Timer from '../components/Timer';
-import { Users, LogOut, Play, Trophy, Palette } from 'lucide-react';
+import { Users, LogOut, Play, Trophy, Palette, Loader2 } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { motion, AnimatePresence } from 'motion/react';
 
 import WORDS from '../words.json';
 
@@ -17,6 +19,7 @@ export default function Room() {
   const { currentPlayer, room, players, messages, setRoom, setPlayers, setMessages, addMessage } = useGameStore();
   const [loading, setLoading] = useState(true);
   const [channel, setChannel] = useState<any>(null);
+  const [showRoundOver, setShowRoundOver] = useState(false);
 
   useEffect(() => {
     if (!id || !currentPlayer) {
@@ -85,7 +88,18 @@ export default function Room() {
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         if (payload.new && (payload.new as Message).room_id === id) {
-          addMessage(payload.new as Message);
+          const msg = payload.new as Message;
+          addMessage(msg);
+          
+          // Trigger confetti if someone guessed the word
+          if (msg.is_system && msg.content.includes('guessed the word!')) {
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 },
+              colors: ['#4f46e5', '#10b981', '#f59e0b', '#ec4899']
+            });
+          }
         }
       })
       .subscribe();
@@ -126,11 +140,18 @@ export default function Room() {
       
       if (elapsed >= room.settings.drawTime || allGuessed) {
         isEndingTurn.current = true;
+        
+        // Broadcast round over to show overlay for everyone
+        await supabase.from('rooms').update({
+          status: 'round_over'
+        }).eq('id', room.id);
+
         await endTurn();
+        
         // Reset after a short delay to allow DB updates to propagate
         setTimeout(() => {
           isEndingTurn.current = false;
-        }, 2000);
+        }, 3000);
       }
     };
 
@@ -172,12 +193,14 @@ export default function Room() {
 
     if (nextRound > room.settings.rounds) {
       // Game over
-      await supabase.from('rooms').update({
-        status: 'finished',
-        current_drawer_id: null,
-        current_word: null,
-        word_start_time: null,
-      }).eq('id', room.id);
+      setTimeout(async () => {
+        await supabase.from('rooms').update({
+          status: 'finished',
+          current_drawer_id: null,
+          current_word: null,
+          word_start_time: null,
+        }).eq('id', room.id);
+      }, 3000);
       
       const gameOverId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
       addMessage({
@@ -198,7 +221,9 @@ export default function Room() {
     } else {
       // Next turn
       const nextDrawer = players[nextIndex];
-      startTurn(nextDrawer.id, nextRound, room.used_words);
+      setTimeout(() => {
+        startTurn(nextDrawer.id, nextRound, room.used_words);
+      }, 3000);
     }
   };
 
@@ -220,6 +245,7 @@ export default function Room() {
 
     // Update room
     await supabase.from('rooms').update({
+      status: 'playing',
       current_drawer_id: drawerId,
       current_word: word,
       word_start_time: new Date().toISOString(),
@@ -296,7 +322,23 @@ export default function Room() {
   }, [currentPlayer]);
 
   if (loading || !room) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
+          <Loader2 className="w-12 h-12 text-primary" />
+        </motion.div>
+        <motion.h2 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 text-xl font-semibold text-muted-foreground"
+        >
+          Loading Room...
+        </motion.h2>
+      </div>
+    );
   }
 
   const isDrawer = currentPlayer?.id === room.current_drawer_id;
@@ -416,11 +458,49 @@ export default function Room() {
                 </div>
                 
                 {/* Overlay if not drawer and waiting for turn */}
-                {!isDrawer && !room.current_drawer_id && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10">
-                    <div className="text-2xl font-bold text-foreground">Waiting for next round...</div>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {!isDrawer && !room.current_drawer_id && room.status === 'playing' && (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl border-4 border-transparent"
+                    >
+                      <motion.div 
+                        initial={{ scale: 0.9, y: 20 }}
+                        animate={{ scale: 1, y: 0 }}
+                        className="bg-card p-8 rounded-2xl shadow-2xl border border-border text-center max-w-md w-full mx-4"
+                      >
+                        <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+                        <div className="text-2xl font-bold text-foreground mb-2">Waiting for next round...</div>
+                        <p className="text-muted-foreground">Get ready to guess!</p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                  
+                  {/* Time up overlay */}
+                  {room.status === 'round_over' && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-background/90 backdrop-blur-md flex items-center justify-center z-20 rounded-xl border-4 border-transparent"
+                    >
+                      <motion.div 
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: "spring", damping: 15 }}
+                        className="text-center"
+                      >
+                        <h3 className="text-4xl font-extrabold text-foreground mb-4">Round Over!</h3>
+                        <p className="text-xl text-muted-foreground mb-2">The word was:</p>
+                        <div className="text-5xl font-mono font-bold text-primary tracking-widest bg-card px-8 py-4 rounded-2xl border border-border shadow-xl inline-block">
+                          {room.current_word}
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </>
           )}

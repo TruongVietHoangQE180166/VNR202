@@ -13,7 +13,7 @@ export default function WordDisplay() {
 
     const isDrawer = room.current_drawer_id === currentPlayer?.id;
     
-    if (isDrawer || currentPlayer?.isHost) {
+    if (isDrawer) {
       setDisplayWord(room.current_word);
       return;
     }
