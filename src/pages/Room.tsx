@@ -93,12 +93,23 @@ export default function Room() {
           
           // Trigger confetti if someone guessed the word
           if (msg.is_system && msg.content.includes('guessed the word!')) {
-            confetti({
-              particleCount: 100,
-              spread: 70,
-              origin: { y: 0.6 },
-              colors: ['#4f46e5', '#10b981', '#f59e0b', '#ec4899']
-            });
+            const duration = 3 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+            const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+            const interval: any = setInterval(function() {
+              const timeLeft = animationEnd - Date.now();
+
+              if (timeLeft <= 0) {
+                return clearInterval(interval);
+              }
+
+              const particleCount = 50 * (timeLeft / duration);
+              confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+              confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
           }
         }
       })
@@ -162,6 +173,11 @@ export default function Room() {
 
   const endTurn = async () => {
     if (!room) return;
+
+    // Set status to round_over to show the overlay
+    await supabase.from('rooms').update({
+      status: 'round_over',
+    }).eq('id', room.id);
 
     // Send system message with answer
     const sysMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
@@ -273,7 +289,10 @@ export default function Room() {
   };
 
   const startGame = async () => {
-    if (!room || players.length < 2) return;
+    if (!room || players.length < 2) {
+      alert("Need at least 2 players to start the game.");
+      return;
+    }
     
     await supabase.from('rooms').update({
       status: 'playing',
@@ -323,20 +342,58 @@ export default function Room() {
 
   if (loading || !room) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <motion.div 
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] rounded-full bg-primary/10 blur-3xl"
+          />
+          <motion.div 
+            animate={{ 
+              scale: [1, 1.5, 1],
+              opacity: [0.2, 0.4, 0.2],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            className="absolute -bottom-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-accent/10 blur-3xl"
+          />
+        </div>
+
         <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", damping: 20 }}
+          className="relative z-10 flex flex-col items-center"
         >
-          <Loader2 className="w-12 h-12 text-primary" />
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+            <Palette className="w-24 h-24 text-primary relative z-10 drop-shadow-lg" />
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 border-4 border-dashed border-primary/30 rounded-full"
+            />
+          </div>
+          
+          <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-6 drop-shadow-sm">
+            Draw & Guess
+          </h1>
+          
+          <div className="w-64 h-2 bg-muted rounded-full overflow-hidden relative">
+            <motion.div
+              initial={{ width: "0%" }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-accent rounded-full"
+            />
+          </div>
+          <p className="mt-4 text-sm font-medium text-muted-foreground uppercase tracking-widest">
+            Entering Room...
+          </p>
         </motion.div>
-        <motion.h2 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 text-xl font-semibold text-muted-foreground"
-        >
-          Loading Room...
-        </motion.h2>
       </div>
     );
   }
@@ -487,16 +544,17 @@ export default function Room() {
                       className="absolute inset-0 bg-background/90 backdrop-blur-md flex items-center justify-center z-20 rounded-xl border-4 border-transparent"
                     >
                       <motion.div 
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", damping: 15 }}
-                        className="text-center"
+                        initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="bg-card p-10 rounded-3xl shadow-2xl border border-border text-center max-w-lg w-full mx-4 relative overflow-hidden"
                       >
-                        <h3 className="text-4xl font-extrabold text-foreground mb-4">Round Over!</h3>
-                        <p className="text-xl text-muted-foreground mb-2">The word was:</p>
-                        <div className="text-5xl font-mono font-bold text-primary tracking-widest bg-card px-8 py-4 rounded-2xl border border-border shadow-xl inline-block">
-                          {room.current_word}
-                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 pointer-events-none" />
+                        <h3 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-6 drop-shadow-sm relative z-10">Round Over!</h3>
+                        <p className="text-2xl text-muted-foreground relative z-10">
+                          The word was: <br/>
+                          <span className="font-black text-foreground text-4xl mt-2 block tracking-widest uppercase">{room.current_word}</span>
+                        </p>
                       </motion.div>
                     </motion.div>
                   )}

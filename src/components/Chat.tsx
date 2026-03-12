@@ -20,7 +20,7 @@ export default function Chat() {
     setInput('');
 
     // Check if it's a guess
-    if (room.status === 'playing' && room.current_word) {
+    if (room.status === 'playing' && room.current_word && !currentPlayer.isHost) {
       const isDrawer = room.current_drawer_id === currentPlayer.id;
       const player = players.find(p => p.id === currentPlayer.id);
       
@@ -91,7 +91,7 @@ export default function Chat() {
     const tempMessage: Message = {
       id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0'),
       room_id: room.id,
-      player_id: currentPlayer.id,
+      player_id: currentPlayer.isHost ? null : currentPlayer.id,
       player_name: currentPlayer.name,
       content: messageContent,
       is_system: false,
@@ -104,7 +104,7 @@ export default function Chat() {
     await supabase.from('messages').insert({
       id: tempMessage.id,
       room_id: room.id,
-      player_id: currentPlayer.id,
+      player_id: currentPlayer.isHost ? null : currentPlayer.id,
       player_name: currentPlayer.name,
       content: messageContent,
       is_system: false,
@@ -137,13 +137,14 @@ export default function Chat() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your guess..."
+          placeholder={currentPlayer?.isHost ? "Hosts can only observe" : "Type your guess..."}
+          disabled={currentPlayer?.isHost}
           className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           maxLength={100}
         />
         <button
           type="submit"
-          disabled={!input.trim()}
+          disabled={!input.trim() || currentPlayer?.isHost}
           className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground p-2 rounded-lg transition-colors flex items-center justify-center"
         >
           <Send className="w-4 h-4" />

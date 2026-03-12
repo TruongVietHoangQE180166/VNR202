@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { Eraser, Trash2, Paintbrush } from 'lucide-react';
+import { Eraser, Trash2, Paintbrush, Undo2 } from 'lucide-react';
 
 interface CanvasProps {
   roomId: string;
@@ -14,6 +14,7 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(5);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,9 +63,24 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
       }
     };
 
+    const handleSyncEvent = (payload: any) => {
+      const { image } = payload.payload;
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (ctx && canvas && image) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = image;
+      }
+    };
+
     canvasChannel
       .on('broadcast', { event: 'draw' }, handleDrawEvent)
       .on('broadcast', { event: 'clear' }, handleClearEvent)
+      .on('broadcast', { event: 'sync' }, handleSyncEvent)
       .subscribe();
 
     return () => {
@@ -123,6 +139,13 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
     // Store current position
     canvasRef.current?.setAttribute('data-x', x.toString());
     canvasRef.current?.setAttribute('data-y', y.toString());
+
+    // Save state for undo
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const dataUrl = canvas.toDataURL();
+      setHistory(prev => [...prev.slice(-19), dataUrl]);
+    }
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
@@ -151,12 +174,34 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (ctx && canvas) {
+      setHistory(prev => [...prev.slice(-19), canvas.toDataURL()]);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       channel.send({
         type: 'broadcast',
         event: 'clear',
         payload: {},
       });
+    }
+  };
+
+  const undo = () => {
+    if (!isDrawer || history.length === 0 || !channel) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (ctx && canvas) {
+      const previousState = history[history.length - 1];
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        channel.send({
+          type: 'broadcast',
+          event: 'sync',
+          payload: { image: previousState },
+        });
+      };
+      img.src = previousState;
+      setHistory(prev => prev.slice(0, -1));
     }
   };
 
@@ -219,6 +264,16 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
                 style={{ transform: `scale(${lineWidth / 30})` }}
               />
             </div>
+
+            {/* Undo */}
+            <button
+              onClick={undo}
+              disabled={history.length === 0}
+              className="p-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors"
+              title="Undo"
+            >
+              <Undo2 className="w-5 h-5" />
+            </button>
 
             {/* Clear Canvas */}
             <button

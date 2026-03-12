@@ -33,17 +33,6 @@ export default function Home() {
 
       if (error) throw error;
 
-      // Add host to players table
-      const { error: playerError } = await supabase
-        .from('players')
-        .insert({
-          id: hostId,
-          room_id: room.id,
-          name: playerName || 'Host',
-        });
-
-      if (playerError) throw playerError;
-
       setCurrentPlayer({ id: hostId, name: playerName || 'Host', isHost: true });
       navigate(`/room/${room.id}`);
     } catch (error: any) {
@@ -98,6 +87,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
         <motion.div
           animate={{
             rotate: [0, 360],
@@ -114,6 +104,22 @@ export default function Home() {
           transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
           className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-accent/5 blur-[120px]"
         />
+        
+        {/* Floating game elements */}
+        <motion.div
+          animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[15%] left-[15%] opacity-20"
+        >
+          <Pencil className="w-16 h-16 text-primary" />
+        </motion.div>
+        <motion.div
+          animate={{ y: [0, 20, 0], rotate: [0, -15, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute bottom-[20%] right-[15%] opacity-20"
+        >
+          <Palette className="w-20 h-20 text-accent" />
+        </motion.div>
       </div>
 
       <motion.div 
