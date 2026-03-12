@@ -314,8 +314,8 @@ export default function Room() {
   };
 
   const startGame = async () => {
-    if (!room || players.length < 2) {
-      alert("Need at least 2 players to start the game.");
+    if (!room || players.length < 1) {
+      alert("Need at least 1 player to start the game.");
       return;
     }
     
@@ -487,7 +487,7 @@ export default function Room() {
             <div className="p-4 mt-auto border-t border-border">
               <button
                 onClick={startGame}
-                disabled={players.length < 2}
+                disabled={players.length < 1}
                 className="w-full bg-accent hover:bg-accent/90 disabled:bg-muted disabled:text-muted-foreground text-accent-foreground font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <Play className="w-5 h-5" />
