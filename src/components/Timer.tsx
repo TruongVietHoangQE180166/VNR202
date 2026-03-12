@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { Clock } from 'lucide-react';
+import { soundManager } from '../lib/sounds';
 
 export default function Timer() {
   const { room } = useGameStore();
@@ -17,6 +18,11 @@ export default function Timer() {
       const now = new Date().getTime();
       const elapsed = (now - startTime) / 1000;
       const remaining = Math.max(0, Math.ceil(room.settings.drawTime - elapsed));
+      
+      if (remaining <= 10 && remaining > 0 && remaining !== timeLeft) {
+        soundManager.play('tick');
+      }
+      
       setTimeLeft(remaining);
     };
 

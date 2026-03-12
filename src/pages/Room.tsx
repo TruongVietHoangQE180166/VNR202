@@ -10,6 +10,7 @@ import Timer from '../components/Timer';
 import { Users, LogOut, Play, Trophy, Palette, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
+import { soundManager } from '../lib/sounds';
 
 import WORDS from '../words.json';
 
@@ -25,20 +26,35 @@ export default function Room() {
   const [prevDrawerId, setPrevDrawerId] = useState<string | null>(null);
   const [prevHasGuessed, setPrevHasGuessed] = useState(false);
 
+  const [prevStatus, setPrevStatus] = useState<string | null>(null);
+
   useEffect(() => {
     if (!room || !currentPlayer) return;
+
+    // Play start sound for everyone when room status changes to starting
+    if (room.status === 'starting' && prevStatus !== 'starting') {
+      soundManager.play('start');
+    }
+    setPrevStatus(room.status);
     
     // Check if it's now your turn to draw
     if (room.current_drawer_id === currentPlayer.id && prevDrawerId !== currentPlayer.id) {
       setShowYourTurn(true);
       setTimeout(() => setShowYourTurn(false), 3000);
     }
+
+    // Play turn sound for everyone when drawer changes
+    if (room.current_drawer_id && room.current_drawer_id !== prevDrawerId) {
+      soundManager.play('turn');
+    }
+
     setPrevDrawerId(room.current_drawer_id);
 
     // Check if you just guessed correctly
     const me = players.find(p => p.id === currentPlayer.id);
     if (me && me.has_guessed && !prevHasGuessed) {
       setShowCorrectGuess(true);
+      soundManager.play('correct');
       setTimeout(() => setShowCorrectGuess(false), 3000);
     }
     if (me) {
@@ -229,6 +245,7 @@ export default function Room() {
 
     if (nextRound > room.settings.rounds) {
       // Game over
+      soundManager.play('gameOver');
       const finalResults = [...players].sort((a, b) => b.score - a.score);
       
       setTimeout(async () => {

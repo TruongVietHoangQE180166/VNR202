@@ -3,6 +3,7 @@ import { useGameStore, Message } from '../store/gameStore';
 import { supabase } from '../lib/supabase';
 import { Send } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { soundManager } from '../lib/sounds';
 
 export default function Chat() {
   const { currentPlayer, room, messages, players } = useGameStore();
