@@ -224,7 +224,7 @@ export default function Canvas({ roomId, isDrawer }: CanvasProps) {
             <div className="w-px h-6 bg-border mx-1" />
 
             {/* Preset Colors */}
-            {['#000000', '#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'].map((c) => (
+            {['#000000', '#64748B', '#EF4444', '#F97316', '#F59E0B', '#84CC16', '#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#78350F'].map((c) => (
               <button
                 key={c}
                 onClick={() => setColor(c)}

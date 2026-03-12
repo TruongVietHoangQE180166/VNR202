@@ -20,6 +20,31 @@ export default function Room() {
   const [loading, setLoading] = useState(true);
   const [channel, setChannel] = useState<any>(null);
   const [showRoundOver, setShowRoundOver] = useState(false);
+  const [showYourTurn, setShowYourTurn] = useState(false);
+  const [showCorrectGuess, setShowCorrectGuess] = useState(false);
+  const [prevDrawerId, setPrevDrawerId] = useState<string | null>(null);
+  const [prevHasGuessed, setPrevHasGuessed] = useState(false);
+
+  useEffect(() => {
+    if (!room || !currentPlayer) return;
+    
+    // Check if it's now your turn to draw
+    if (room.current_drawer_id === currentPlayer.id && prevDrawerId !== currentPlayer.id) {
+      setShowYourTurn(true);
+      setTimeout(() => setShowYourTurn(false), 3000);
+    }
+    setPrevDrawerId(room.current_drawer_id);
+
+    // Check if you just guessed correctly
+    const me = players.find(p => p.id === currentPlayer.id);
+    if (me && me.has_guessed && !prevHasGuessed) {
+      setShowCorrectGuess(true);
+      setTimeout(() => setShowCorrectGuess(false), 3000);
+    }
+    if (me) {
+      setPrevHasGuessed(me.has_guessed);
+    }
+  }, [room?.current_drawer_id, players, currentPlayer, prevDrawerId, prevHasGuessed]);
 
   useEffect(() => {
     if (!id || !currentPlayer) {
@@ -484,25 +509,49 @@ export default function Room() {
               )}
             </div>
           ) : room.status === 'finished' ? (
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <Trophy className="w-24 h-24 text-yellow-500 mb-6" />
-              <h2 className="text-4xl font-bold text-foreground mb-8">Game Over!</h2>
-              <div className="bg-card rounded-xl p-6 w-full max-w-md border border-border">
-                <h3 className="text-xl font-bold mb-4 text-center">Final Scores</h3>
-                <div className="space-y-3">
+            <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-background to-accent/5">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", damping: 12 }}
+                className="text-center mb-10"
+              >
+                <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6 drop-shadow-lg" />
+                <h2 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-2">Game Over!</h2>
+                <p className="text-xl text-muted-foreground">Here are the final standings</p>
+              </motion.div>
+              
+              <motion.div 
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="bg-card rounded-3xl p-8 w-full max-w-lg border border-border shadow-2xl relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-accent to-primary" />
+                <h3 className="text-2xl font-bold mb-6 text-center">Final Scores</h3>
+                <div className="space-y-4">
                   {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
-                    <div key={p.id} className="flex items-center justify-between bg-background p-3 rounded-lg border border-border">
-                      <div className="flex items-center gap-3">
-                        <span className={`font-bold ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-muted-foreground' : i === 2 ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                          #{i + 1}
+                    <motion.div 
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.3 + i * 0.1 }}
+                      key={p.id} 
+                      className={`flex items-center justify-between p-4 rounded-xl border ${i === 0 ? 'bg-yellow-500/10 border-yellow-500/50 shadow-sm' : i === 1 ? 'bg-slate-500/10 border-slate-500/50' : i === 2 ? 'bg-amber-700/10 border-amber-700/50' : 'bg-background border-border'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${i === 0 ? 'bg-yellow-500 text-white' : i === 1 ? 'bg-slate-400 text-white' : i === 2 ? 'bg-amber-600 text-white' : 'bg-muted text-muted-foreground'}`}>
+                          {i + 1}
+                        </div>
+                        <span className={`font-bold text-lg ${i === 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-foreground'}`}>
+                          {p.name}
+                          {p.id === currentPlayer?.id && <span className="ml-2 text-[10px] bg-primary/20 text-primary px-2 py-1 rounded-full uppercase font-bold align-middle">You</span>}
                         </span>
-                        <span className="font-medium">{p.name}</span>
                       </div>
-                      <span className="font-mono font-bold text-primary">{p.score} pts</span>
-                    </div>
+                      <span className="font-mono font-bold text-xl text-primary">{p.score} <span className="text-sm text-muted-foreground font-sans font-normal">pts</span></span>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             </div>
           ) : (
             <>
@@ -555,6 +604,50 @@ export default function Room() {
                           The word was: <br/>
                           <span className="font-black text-foreground text-4xl mt-2 block tracking-widest uppercase">{room.current_word}</span>
                         </p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+
+                  {/* Your Turn Overlay */}
+                  {showYourTurn && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-30 rounded-xl border-4 border-transparent pointer-events-none"
+                    >
+                      <motion.div 
+                        initial={{ scale: 0.5, opacity: 0, y: 50 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.8, opacity: 0, y: -50 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="bg-primary text-primary-foreground p-8 rounded-3xl shadow-2xl text-center max-w-md w-full mx-4"
+                      >
+                        <Palette className="w-16 h-16 mx-auto mb-4" />
+                        <h3 className="text-4xl font-extrabold mb-2">Your Turn!</h3>
+                        <p className="text-xl opacity-90">Get ready to draw</p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+
+                  {/* Correct Guess Overlay */}
+                  {showCorrectGuess && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-background/40 backdrop-blur-sm flex items-center justify-center z-30 rounded-xl border-4 border-transparent pointer-events-none"
+                    >
+                      <motion.div 
+                        initial={{ scale: 0.5, opacity: 0, rotate: 10 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        exit={{ scale: 0.8, opacity: 0, rotate: -10 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="bg-accent text-accent-foreground p-8 rounded-3xl shadow-2xl text-center max-w-md w-full mx-4"
+                      >
+                        <Trophy className="w-16 h-16 mx-auto mb-4" />
+                        <h3 className="text-4xl font-extrabold mb-2">Correct!</h3>
+                        <p className="text-xl opacity-90">You guessed the word</p>
                       </motion.div>
                     </motion.div>
                   )}

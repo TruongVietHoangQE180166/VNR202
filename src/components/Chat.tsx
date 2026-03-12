@@ -124,7 +124,9 @@ export default function Chat() {
             className={`text-sm ${msg.is_system ? 'text-accent font-medium italic' : 'text-muted-foreground'}`}
           >
             {!msg.is_system && (
-              <span className="font-bold text-primary mr-2">{msg.player_name}:</span>
+              <span className="font-bold text-primary mr-2">
+                {msg.player_id === currentPlayer?.id ? 'You' : msg.player_name}:
+              </span>
             )}
             <span className="break-words">{msg.content}</span>
           </div>
