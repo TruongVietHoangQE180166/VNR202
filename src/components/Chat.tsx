@@ -44,7 +44,9 @@ export default function Chat() {
         const now = new Date().getTime();
         const elapsed = (now - startTime) / 1000;
         const remaining = Math.max(0, room.settings.drawTime - elapsed);
-        const scoreGained = Math.floor((remaining / room.settings.drawTime) * 1000);
+        
+        // Fairer formula: Base 500 + Time Bonus up to 500
+        const scoreGained = 500 + Math.floor((remaining / room.settings.drawTime) * 500);
 
         // Update player score and has_guessed
         await supabase
@@ -61,7 +63,7 @@ export default function Chat() {
           await supabase
             .from('players')
             .update({
-              score: (drawer.score || 0) + 200, // Drawer gets 200 points per correct guess
+              score: (drawer.score || 0) + 150, // Drawer gets 150 points per correct guess
             })
             .eq('id', drawer.id);
         }

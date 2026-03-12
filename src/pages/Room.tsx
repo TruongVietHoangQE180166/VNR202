@@ -294,6 +294,35 @@ export default function Room() {
       is_system: true,
     });
 
+    // Apply penalties and bonuses
+    const nonDrawers = players.filter(p => p.id !== room.current_drawer_id);
+    const guessersCount = nonDrawers.filter(p => p.has_guessed).length;
+    const drawer = players.find(p => p.id === room.current_drawer_id);
+
+    // 1. Penalty for guessers who didn't guess (-100)
+    for (const p of nonDrawers) {
+      if (!p.has_guessed) {
+        await supabase.from('players').update({
+          score: Math.max(0, p.score - 100)
+        }).eq('id', p.id);
+      }
+    }
+
+    // 2. Penalty/Bonus for drawer
+    if (drawer) {
+      if (guessersCount === 0) {
+        // Nobody guessed - penalty for drawer (-200)
+        await supabase.from('players').update({
+          score: Math.max(0, drawer.score - 200)
+        }).eq('id', drawer.id);
+      } else if (guessersCount === nonDrawers.length && nonDrawers.length > 0) {
+        // Everyone guessed - bonus for drawer (+300)
+        await supabase.from('players').update({
+          score: drawer.score + 300
+        }).eq('id', drawer.id);
+      }
+    }
+
     // Find next drawer
     const currentIndex = players.findIndex(p => p.id === room.current_drawer_id);
     let nextIndex = currentIndex + 1;
