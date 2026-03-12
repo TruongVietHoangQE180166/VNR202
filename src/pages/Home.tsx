@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useGameStore } from '../store/gameStore';
-import { Palette, Users, Settings, Play, Pencil } from 'lucide-react';
+import { Palette, Users, Settings, Play, Pencil, Volume2, VolumeX } from 'lucide-react';
 import { motion } from 'motion/react';
+import { soundManager } from '../lib/sounds';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -11,6 +12,23 @@ export default function Home() {
   const [isCreating, setIsCreating] = useState(false);
   const [joinId, setJoinId] = useState('');
   const [playerName, setPlayerName] = useState('');
+  const [isMuted, setIsMuted] = useState(soundManager.getIsMuted());
+  const [volume, setVolume] = useState(soundManager.getVolume());
+
+  useEffect(() => {
+    soundManager.playBGM();
+  }, []);
+
+  const toggleMute = () => {
+    const newMuted = soundManager.toggleMute();
+    setIsMuted(newMuted);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    soundManager.setVolume(newVolume);
+    setVolume(newVolume);
+  };
   const [settings, setSettings] = useState({
     maxPlayers: 8,
     rounds: 3,
@@ -106,6 +124,26 @@ export default function Home() {
         />
         
         {/* Floating game elements */}
+        <div className="absolute top-4 right-4 z-50 pointer-events-auto flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-card/50 backdrop-blur-md px-4 py-2 rounded-full border border-border/50 shadow-lg">
+            <button
+              onClick={toggleMute}
+              className="p-1 hover:bg-secondary rounded-md transition-all text-muted-foreground hover:text-foreground"
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volume}
+              onChange={handleVolumeChange}
+              className="w-24 h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+          </div>
+        </div>
         <motion.div
           animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}

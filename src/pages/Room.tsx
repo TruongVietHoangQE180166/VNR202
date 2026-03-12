@@ -7,7 +7,7 @@ import Chat from '../components/Chat';
 import PlayerList from '../components/PlayerList';
 import WordDisplay from '../components/WordDisplay';
 import Timer from '../components/Timer';
-import { Users, LogOut, Play, Trophy, Palette, Loader2, Pencil } from 'lucide-react';
+import { Users, LogOut, Play, Trophy, Palette, Loader2, Pencil, Volume2, VolumeX } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
 import { soundManager } from '../lib/sounds';
@@ -25,6 +25,8 @@ export default function Room() {
   const [showCorrectGuess, setShowCorrectGuess] = useState(false);
   const [showTurnAnnouncement, setShowTurnAnnouncement] = useState(false);
   const [currentDrawerName, setCurrentDrawerName] = useState('');
+  const [isMuted, setIsMuted] = useState(soundManager.getIsMuted());
+  const [volume, setVolume] = useState(soundManager.getVolume());
   const [prevDrawerId, setPrevDrawerId] = useState<string | null>(null);
   const [prevScores, setPrevScores] = useState<Record<string, number>>({});
   const [scoreGains, setScoreGains] = useState<Record<string, number>>({});
@@ -54,6 +56,10 @@ export default function Room() {
         }
       });
       setScoreGains(gains);
+    }
+
+    if (room.status === 'finished' && prevStatus !== 'finished') {
+      soundManager.play('gameOver');
     }
 
     // Play join/leave sounds
@@ -136,6 +142,9 @@ export default function Room() {
 
     const fetchInitialData = async () => {
       try {
+        // Start BGM
+        soundManager.playBGM();
+
         // Fetch room
         const { data: roomData, error: roomError } = await supabase
           .from('rooms')
@@ -295,7 +304,6 @@ export default function Room() {
 
     if (nextRound > room.settings.rounds) {
       // Game over
-      soundManager.play('gameOver');
       const finalResults = [...players].sort((a, b) => b.score - a.score);
       
       setTimeout(async () => {
@@ -414,6 +422,7 @@ export default function Room() {
   };
 
   const handleLeave = async () => {
+    soundManager.stopBGM();
     if (currentPlayer && !currentPlayer.isHost) {
       await supabase.from('players').delete().eq('id', currentPlayer.id);
     }
@@ -600,6 +609,17 @@ export default function Room() {
     );
   }
 
+  const toggleMute = () => {
+    const newMuted = soundManager.toggleMute();
+    setIsMuted(newMuted);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    soundManager.setVolume(newVolume);
+    setVolume(newVolume);
+  };
+
   const isDrawer = currentPlayer?.id === room.current_drawer_id;
 
   return (
@@ -626,17 +646,38 @@ export default function Room() {
           </div>
         )}
 
-        <button
-          onClick={() => {
-            soundManager.play('click');
-            handleLeave();
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
-        >
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
+            <button
+              onClick={toggleMute}
+              className="p-1 hover:bg-secondary rounded-md transition-colors text-muted-foreground hover:text-foreground"
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volume}
+              onChange={handleVolumeChange}
+              className="w-20 h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              soundManager.play('click');
+              handleLeave();
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors"
+          >
           <LogOut className="w-4 h-4" />
           Leave
         </button>
-      </header>
+      </div>
+    </header>
 
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden">
