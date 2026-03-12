@@ -79,6 +79,7 @@ export default function Room() {
     // Check if it's now your turn to draw
     if (room.current_drawer_id === currentPlayer.id && prevDrawerId !== currentPlayer.id) {
       setShowYourTurn(true);
+      setShowCorrectGuess(false); // Force hide correct guess modal
       soundManager.play('yourTurn');
       setTimeout(() => setShowYourTurn(false), 3000);
     }
@@ -100,7 +101,9 @@ export default function Room() {
 
     // Check if you just guessed correctly
     const me = players.find(p => p.id === currentPlayer.id);
-    if (me && me.has_guessed && !lastHandledGuessRef.current) {
+    const isDrawer = room.current_drawer_id === currentPlayer.id;
+    
+    if (me && me.has_guessed && !lastHandledGuessRef.current && !isDrawer) {
       setShowCorrectGuess(true);
       soundManager.play('correct');
       
