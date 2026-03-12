@@ -117,7 +117,7 @@ export default function Room() {
           addMessage(msg);
           
           // Trigger confetti if someone guessed the word
-          if (msg.is_system && msg.content.includes('guessed the word!')) {
+          if (msg.is_system && msg.content.includes('guessed the word!') && msg.content.includes(currentPlayer?.name || '')) {
             const duration = 3 * 1000;
             const animationEnd = Date.now() + duration;
             const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
@@ -229,12 +229,15 @@ export default function Room() {
 
     if (nextRound > room.settings.rounds) {
       // Game over
+      const finalResults = [...players].sort((a, b) => b.score - a.score);
+      
       setTimeout(async () => {
         await supabase.from('rooms').update({
           status: 'finished',
           current_drawer_id: null,
           current_word: null,
           word_start_time: null,
+          settings: { ...room.settings, finalResults }
         }).eq('id', room.id);
       }, 3000);
       
@@ -278,6 +281,27 @@ export default function Room() {
     const word = availableWords[Math.floor(Math.random() * availableWords.length)];
     const newUsedWords = [...safeUsedWords, word];
 
+    const drawer = players.find(p => p.id === drawerId);
+    const turnMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
+    
+    // Add local message for the host/drawer
+    addMessage({
+      id: turnMsgId,
+      room_id: room.id,
+      player_id: null,
+      player_name: null,
+      content: `${drawer?.name || 'Someone'} is now drawing!`,
+      is_system: true,
+      created_at: new Date().toISOString(),
+    });
+
+    await supabase.from('messages').insert({
+      id: turnMsgId,
+      room_id: room.id,
+      content: `${drawer?.name || 'Someone'} is now drawing!`,
+      is_system: true,
+    });
+
     // Reset players has_guessed
     const { error: pError } = await supabase.from('players').update({ has_guessed: false }).eq('room_id', room.id);
     if (pError) console.error("Error resetting players:", pError);
@@ -292,24 +316,6 @@ export default function Room() {
       used_words: newUsedWords,
     }).eq('id', room.id);
     if (rError) console.error("Error updating room in startTurn:", rError);
-
-    const drawer = players.find(p => p.id === drawerId);
-    const drawerMsgId = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-' + Math.random().toString(16).substring(2, 14).padEnd(12, '0');
-    addMessage({
-      id: drawerMsgId,
-      room_id: room.id,
-      player_id: null,
-      player_name: null,
-      content: `${drawer?.name || 'Someone'} is drawing now!`,
-      is_system: true,
-      created_at: new Date().toISOString(),
-    });
-    await supabase.from('messages').insert({
-      id: drawerMsgId,
-      room_id: room.id,
-      content: `${drawer?.name || 'Someone'} is drawing now!`,
-      is_system: true,
-    });
   };
 
   const startGame = async () => {
@@ -456,7 +462,32 @@ export default function Room() {
           >
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-accent to-primary" />
             <div className="grid gap-4">
-              {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
+              {(room.settings as any).finalResults ? (room.settings as any).finalResults.map((p: any, i: number) => (
+                <motion.div 
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 + i * 0.1 }}
+                  key={p.id} 
+                  className={`flex items-center justify-between p-5 rounded-2xl border ${i === 0 ? 'bg-yellow-500/10 border-yellow-500/50 shadow-lg scale-105' : i === 1 ? 'bg-slate-500/10 border-slate-500/50' : i === 2 ? 'bg-amber-700/10 border-amber-700/50' : 'bg-background border-border'}`}
+                >
+                  <div className="flex items-center gap-5">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${i === 0 ? 'bg-yellow-500 text-white' : i === 1 ? 'bg-slate-400 text-white' : i === 2 ? 'bg-amber-600 text-white' : 'bg-muted text-muted-foreground'}`}>
+                      {i + 1}
+                    </div>
+                    <div>
+                      <span className={`font-bold text-xl block ${i === 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-foreground'}`}>
+                        {p.name}
+                        {p.id === currentPlayer?.id && <span className="ml-2 text-[10px] bg-primary/20 text-primary px-2 py-1 rounded-full uppercase font-bold align-middle">You</span>}
+                      </span>
+                      {i === 0 && <span className="text-xs text-yellow-600 font-bold uppercase tracking-wider">Winner!</span>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono font-black text-2xl text-primary">{p.score}</span>
+                    <span className="text-xs text-muted-foreground block uppercase font-bold">Points</span>
+                  </div>
+                </motion.div>
+              )) : [...players].sort((a, b) => b.score - a.score).map((p, i) => (
                 <motion.div 
                   initial={{ x: -20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}

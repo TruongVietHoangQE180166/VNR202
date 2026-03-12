@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useGameStore, Message } from '../store/gameStore';
 import { supabase } from '../lib/supabase';
 import { Send } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 export default function Chat() {
   const { currentPlayer, room, messages, players } = useGameStore();
@@ -19,9 +20,10 @@ export default function Chat() {
     const messageContent = input.trim();
     setInput('');
 
+    const isDrawer = room.current_drawer_id === currentPlayer.id;
+
     // Check if it's a guess
     if (room.status === 'playing' && room.current_word && !currentPlayer.isHost) {
-      const isDrawer = room.current_drawer_id === currentPlayer.id;
       const player = players.find(p => p.id === currentPlayer.id);
       
       if (messageContent.toLowerCase() === room.current_word.toLowerCase()) {
@@ -36,6 +38,24 @@ export default function Chat() {
         }
 
         // Correct guess!
+        // Trigger local confetti
+        const duration = 3 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+        const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+        const interval: any = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+
+          if (timeLeft <= 0) {
+            return clearInterval(interval);
+          }
+
+          const particleCount = 50 * (timeLeft / duration);
+          confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+          confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+        }, 250);
         
         // Calculate score based on time
         const startTime = new Date(room.word_start_time!).getTime();
@@ -102,6 +122,8 @@ export default function Chat() {
     });
   };
 
+  const isDrawer = room?.current_drawer_id === currentPlayer?.id;
+
   return (
     <div className="flex flex-col h-full bg-card">
       <div className="p-4 border-b border-border">
@@ -130,14 +152,20 @@ export default function Chat() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={currentPlayer?.isHost ? "Hosts can only observe" : "Type your guess..."}
-          disabled={currentPlayer?.isHost}
+          placeholder={
+            currentPlayer?.isHost 
+              ? "Hosts can only observe" 
+              : isDrawer 
+                ? "You are drawing..." 
+                : "Type your guess..."
+          }
+          disabled={currentPlayer?.isHost || isDrawer}
           className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           maxLength={100}
         />
         <button
           type="submit"
-          disabled={!input.trim() || currentPlayer?.isHost}
+          disabled={!input.trim() || currentPlayer?.isHost || isDrawer}
           className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground p-2 rounded-lg transition-colors flex items-center justify-center"
         >
           <Send className="w-4 h-4" />
